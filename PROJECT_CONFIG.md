@@ -24,6 +24,41 @@
 | 8 | QA | ROLES/07_qa.md | tests/ |
 | 9 | DOCS | ROLES/08_docs.md | docs/ |
 
+## 🎭 РОЛИ + РЕВЬЮ (18 этапов)
+
+Каждый этап разработки имеет два подэтапа: EXECUTE (создание артефактов) и REVIEW (проверка качества).
+
+| Этап | Роль | Режим | Статус | Выходные регистры |
+|------|------|-------|--------|-------------------|
+| 1.1  | ANALYST | EXECUTE | docs/requirements/ |
+| 1.2  | ANALYST_REVIEW | REVIEW | docs/requirements/review_report.md |
+| 2.1  | ARCHITECT | EXECUTE | docs/architecture/ |
+| 2.2  | ARCHITECT_REVIEW | REVIEW | docs/architecture/review_report.md |
+| 3.1  | PM | EXECUTE | docs/planning/ |
+| 3.2  | PM_REVIEW | REVIEW | docs/planning/review_report.md |
+| 4.1  | BACKEND_DEV | EXECUTE | src/backend/ |
+| 4.2  | BACKEND_DEV_REVIEW | REVIEW | src/backend/review_report.md |
+| 5.1  | FRONTEND_DEV | EXECUTE | src/frontend/ |
+| 5.2  | FRONTEND_DEV_REVIEW | REVIEW | src/frontend/review_report.md |
+| 6.1  | INFRA_DEVOPS | EXECUTE | infra/ |
+| 6.2  | INFRA_DEVOPS_REVIEW | REVIEW | infra/review_report.md |
+| 7.1  | SECURITY | EXECUTE | docs/security/ |
+| 7.2  | SECURITY_REVIEW | REVIEW | docs/security/review_report.md |
+| 8.1  | QA | EXECUTE | tests/ |
+| 8.2  | QA_REVIEW | REVIEW | tests/review_report.md |
+| 9.1  | DOCS | EXECUTE | docs/ |
+| 9.2  | DOCS_REVIEW | REVIEW | docs/review_report.md |
+
+### Правила ревью:
+
+1. **REVIEW выполняется той же ролью**, что и EXECUTE (само-ревью)
+2. **Вердикт ревью:**
+   - `APPROVED` → переход к следующему этапу
+   - `NEEDS_REVISION` → возврат к EXECUTE с комментариями
+   - `BLOCKED` → требуется вмешательство OWNER
+3. **Артефакт ревью:** `{artifact_dir}/review_report.md` с детальным анализом
+4. **Критерии ревью:** указаны в каждом `ROLES/{role}.md` в разделе REVIEW
+
 ## 🔄 ЦИКЛ ИСПОЛНЕНИЯ (Fetch-Decode-Execute)
 
 Для каждого агента:
@@ -38,7 +73,8 @@ WRITEBACK: Обновляет WORKFLOW_STATE и создает артефакт�
 
 ### Статусы этапов (FSM):
 ```
-NOT_STARTED → IN_PROGRESS → READY_FOR_REVIEW → APPROVED → DONE
+EXECUTE: NOT_STARTED → IN_PROGRESS → DONE
+REVIEW: NOT_STARTED → IN_PROGRESS → APPROVED / NEEDS_REVISION / BLOCKED
 ```
 
 ### Обработка исключений:
