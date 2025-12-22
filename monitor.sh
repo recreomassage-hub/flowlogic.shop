@@ -21,3 +21,4 @@ echo ""
 echo "📝 GIT СТАТУС:"
 git status --short 2>/dev/null || echo "Git не инициализирован"
 
+

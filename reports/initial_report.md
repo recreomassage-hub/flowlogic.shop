@@ -31,3 +31,4 @@
 3. Запустить ./monitor.sh
 4. Начать этап requirements
 
+

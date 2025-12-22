@@ -41,3 +41,4 @@ echo "  Ctrl+b, d             # Отключиться"
 echo ""
 echo "Запуск: tmux attach -t llmos"
 
+

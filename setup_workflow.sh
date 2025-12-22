@@ -30,3 +30,4 @@ echo "1. git add . && git commit -m '🚀 LLM-OS v1.0 initialized'"
 echo "2. Откройте проект в Cursor"
 echo "3. Начните работу с ANALYST"
 
+

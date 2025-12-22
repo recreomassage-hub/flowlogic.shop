@@ -1,45 +1,62 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # step.sh - Атомарный коммит для LLM-OS
 
-echo "📦 Сборка состояния для коммита..."
+echo "📦 LLM-OS: Подготовка коммита..."
+echo "================================="
 
-# Получаем текущие метрики
-ROLE=$(grep "current_role:" WORKFLOW_STATE.md 2>/dev/null | cut -d':' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "UNKNOWN")
-STAGE=$(grep "current_stage:" WORKFLOW_STATE.md 2>/dev/null | cut -d':' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "UNKNOWN")
+# Проверяем что WORKFLOW_STATE.md существует
+if [ ! -f "WORKFLOW_STATE.md" ]; then
+    echo "❌ Ошибка: WORKFLOW_STATE.md не найден"
+    exit 1
+fi
+
+# Получаем текущие метрики из WORKFLOW_STATE.md
+ROLE=$(grep -i "current_role:" WORKFLOW_STATE.md | head -1 | cut -d':' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+STAGE=$(grep -i "current_stage:" WORKFLOW_STATE.md | head -1 | cut -d':' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+# Если не нашли, используем значения по умолчанию
+[ -z "$ROLE" ] && ROLE="ANALYST"
+[ -z "$STAGE" ] && STAGE="requirements"
+
 TIMESTAMP=$(date +"%H:%M:%S")
-DATE_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+ISO_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-echo "🔍 Анализ прогресса:"
+echo "🔍 Текущее состояние:"
 echo "   Роль: $ROLE"
 echo "   Этап: $STAGE"
 echo "   Время: $TIMESTAMP"
 
 # Обновляем дату в WORKFLOW_STATE.md
-if [ -f "WORKFLOW_STATE.md" ]; then
-    sed -i.bak "s/last_update:.*/last_update: $DATE_ISO/" WORKFLOW_STATE.md
-    sed -i.bak "s/обновлено:.*/обновлено: $DATE_ISO/" WORKFLOW_STATE.md 2>/dev/null || true
-    rm -f WORKFLOW_STATE.md.bak
-    echo "✅ WORKFLOW_STATE.md обновлен"
-fi
+sed -i "s/last_update:.*/last_update: $ISO_TIMESTAMP/" WORKFLOW_STATE.md
+echo "✅ WORKFLOW_STATE.md обновлен"
 
-# Проверяем изменения
-CHANGES=$(git status --porcelain 2>/dev/null)
-if [ -z "$CHANGES" ]; then
+# Проверяем есть ли изменения для коммита
+if git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null; then
     echo "⚠️ Нет изменений для коммита"
-    exit 0
+    echo "💡 Совет: Сначала выполните какую-то работу, затем запустите ./step.sh"
+    
+    # Но все равно делаем коммит с обновлением даты
+    git add WORKFLOW_STATE.md
+    COMMIT_MSG="[SYSTEM] Обновление времени @$TIMESTAMP"
+    git commit -m "$COMMIT_MSG" 2>/dev/null
+    echo "💾 Коммит даты: $COMMIT_MSG"
+else
+    # Создаем сообщение коммита
+    COMMIT_MSG="[$ROLE] $STAGE @$TIMESTAMP"
+    
+    echo "💾 Коммит: $COMMIT_MSG"
+    git add .
+    git commit -m "$COMMIT_MSG" 2>/dev/null
 fi
-
-# Создаем осмысленное сообщение коммита
-STAGE_PROGRESS=$(grep -A5 "###.*$STAGE" WORKFLOW_STATE.md 2>/dev/null | grep "выполнено:" | head -1 | sed 's/.*выполнено: //' || echo "0/?")
-COMMIT_MSG="[$ROLE] $STAGE ($STAGE_PROGRESS) @$TIMESTAMP"
-
-echo "💾 Коммит: $COMMIT_MSG"
-git add . 2>/dev/null
-git commit -m "$COMMIT_MSG" 2>/dev/null
 
 echo ""
-echo "🎯 СЛЕДУЮЩИЕ ШАГИ:"
-echo "   1. git log --oneline -5"
-echo "   2. Проверить WORKFLOW_STATE.md"
-echo "   3. Продолжить работу или передать следующей роли"
+echo "✅ Коммит выполнен!"
+echo "📊 Статистика:"
+git log --oneline -5 2>/dev/null || echo "   (история недоступна)"
 
+# Показываем текущий прогресс если есть
+if grep -q "выполнено:" WORKFLOW_STATE.md; then
+    echo ""
+    echo "📈 Прогресс текущего этапа:"
+    grep "выполнено:" WORKFLOW_STATE.md | head -1
+fi
