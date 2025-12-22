@@ -22,12 +22,14 @@
 
 | Тип секрета | Период ротации | Ответственный | Следующая ротация |
 |-------------|---------------|---------------|-------------------|
-| API ключи (Anthropic, OpenAI) | 90 дней | @SECURITY | [DATE] |
-| Database passwords | 180 дней | @INFRA_DEVOPS | [DATE] |
-| JWT secrets | 365 дней | @BACKEND_DEV | [DATE] |
-| Service tokens (Railway, Vercel) | 90 дней | @INFRA_DEVOPS | [DATE] |
-| GitHub tokens | 90 дней | @INFRA_DEVOPS | [DATE] |
-| Supabase service keys | 90 дней | @INFRA_DEVOPS | [DATE] |
+| Stripe API keys | 90 дней | @SECURITY | 2026-03-22 |
+| AWS Cognito secrets | 180 дней | @INFRA_DEVOPS | 2026-06-22 |
+| AWS SSM Parameter Store secrets | 90 дней | @INFRA_DEVOPS | 2026-03-22 |
+| JWT secrets | 365 дней | @BACKEND_DEV | 2026-12-22 |
+| Service tokens (Vercel, AWS) | 90 дней | @INFRA_DEVOPS | 2026-03-22 |
+| GitHub tokens | 90 дней | @INFRA_DEVOPS | 2026-03-22 |
+| DynamoDB access keys | 180 дней | @INFRA_DEVOPS | 2026-06-22 |
+| S3 access keys | 180 дней | @INFRA_DEVOPS | 2026-06-22 |
 
 ### Процесс ротации
 
@@ -38,8 +40,9 @@
 
 2. **Выполнение**:
    - Создание новых секретов
-   - Обновление в production (Railway/Vercel/Supabase)
+   - Обновление в production (AWS SSM Parameter Store, Vercel)
    - Обновление в GitHub Secrets
+   - Обновление в AWS IAM (если требуется)
    - Тестирование после ротации
 
 3. **Верификация**:
@@ -84,8 +87,9 @@
 
 ---
 
-**Дата создания**: [DATE]  
-**Версия**: 1.0  
+**Дата создания**: 2025-12-22  
+**Версия**: 1.1  
 **Владелец**: @SECURITY  
-**Следующий review**: [DATE]
+**Следующий review**: 2026-03-22  
+**Последнее обновление**: 2025-12-22 (обновлен календарь ротации для AWS архитектуры)
 

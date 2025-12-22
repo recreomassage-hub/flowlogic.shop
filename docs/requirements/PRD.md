@@ -1,10 +1,12 @@
 # 📘 PRD 2.1 — Flow Logic (MediaPipe Assessment + Plans)
 
+**⚠️ ГЛАВНЫЙ ДОКУМЕНТ:** Этот PRD является **единственным источником истины** для всех агентов системы (ANALYST, ARCHITECT, PM, BACKEND_DEV, FRONTEND_DEV, INFRA_DEVOPS, QA, SECURITY, DOCS).
+
 *(Production-ready style: CI/CD + Rollback + Env + Migrations + Security + Monitoring, based on PRD‑7.1 structure)*
 
 **Версия:** 2.1  
 **Дата:** 2025-12-18  
-**Основано на:** `docs/PRD-7.1-Enterprise-Fitness-Assessment-Platform.md` (как эталон структуры) + требования по тарифам Flow Logic (Free/Basic/Pro/Pro+)  
+**История:** Структура документа основана на `PRD-7.1-Enterprise-Fitness-Assessment-Platform.md` (историческая ссылка, файл не существует в проекте) + требования по тарифам Flow Logic (Free/Basic/Pro/Pro+)  
 **MVP language:** **English only** (UI, emails, system messages)
 
 ---

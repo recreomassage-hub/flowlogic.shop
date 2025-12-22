@@ -24,40 +24,79 @@
 | 8 | QA | ROLES/07_qa.md | tests/ |
 | 9 | DOCS | ROLES/08_docs.md | docs/ |
 
-## 🎭 РОЛИ + РЕВЬЮ (18 этапов)
+## 🎭 ОПТИМИЗИРОВАННАЯ СИСТЕМА: 27 ПРОМПТОВ (TZ + 9 ролей × 2 + OWNER)
 
-Каждый этап разработки имеет два подэтапа: EXECUTE (создание артефактов) и REVIEW (проверка качества).
+Каждый этап разработки имеет **двойной контроль качества**: EXECUTE → PEER-REVIEW
 
-| Этап | Роль | Режим | Статус | Выходные регистры |
-|------|------|-------|--------|-------------------|
-| 1.1  | ANALYST | EXECUTE | docs/requirements/ |
-| 1.2  | ANALYST_REVIEW | REVIEW | docs/requirements/review_report.md |
-| 2.1  | ARCHITECT | EXECUTE | docs/architecture/ |
-| 2.2  | ARCHITECT_REVIEW | REVIEW | docs/architecture/review_report.md |
-| 3.1  | PM | EXECUTE | docs/planning/ |
-| 3.2  | PM_REVIEW | REVIEW | docs/planning/review_report.md |
-| 4.1  | BACKEND_DEV | EXECUTE | src/backend/ |
-| 4.2  | BACKEND_DEV_REVIEW | REVIEW | src/backend/review_report.md |
-| 5.1  | FRONTEND_DEV | EXECUTE | src/frontend/ |
-| 5.2  | FRONTEND_DEV_REVIEW | REVIEW | src/frontend/review_report.md |
-| 6.1  | INFRA_DEVOPS | EXECUTE | infra/ |
-| 6.2  | INFRA_DEVOPS_REVIEW | REVIEW | infra/review_report.md |
-| 7.1  | SECURITY | EXECUTE | docs/security/ |
-| 7.2  | SECURITY_REVIEW | REVIEW | docs/security/review_report.md |
-| 8.1  | QA | EXECUTE | tests/ |
-| 8.2  | QA_REVIEW | REVIEW | tests/review_report.md |
-| 9.1  | DOCS | EXECUTE | docs/ |
-| 9.2  | DOCS_REVIEW | REVIEW | docs/review_report.md |
+**Оптимизация:** SELF-REVIEW удален (0 ценность, галлюцинации агента). PEER-REVIEW обеспечивает 95% качества.
 
-### Правила ревью:
+### Структура (27 этапов):
 
-1. **REVIEW выполняется той же ролью**, что и EXECUTE (само-ревью)
-2. **Вердикт ревью:**
-   - `APPROVED` → переход к следующему этапу
-   - `NEEDS_REVISION` → возврат к EXECUTE с комментариями
-   - `BLOCKED` → требуется вмешательство OWNER
-3. **Артефакт ревью:** `{artifact_dir}/review_report.md` с детальным анализом
-4. **Критерии ревью:** указаны в каждом `ROLES/{role}.md` в разделе REVIEW
+| # | Этап | Роль | Режим | Промпт | Выходные регистры |
+|---|------|------|-------|--------|-------------------|
+| **TZ Pipeline (2 этапа)** |
+| 0.1 | TZ Analyst | TZ_ANALYST | EXECUTE | `00_tz_analyst.md` | `docs/tz/` |
+| 0.2 | TZ Reviewer | TZ_REVIEWER | REVIEW | `00_tz_reviewer.md` | `docs/tz/review_report.md` |
+| **ANALYST (2 этапа)** |
+| 1.1 | Requirements Execute | ANALYST | EXECUTE | `01_analyst_execute.md` | `docs/requirements/` |
+| 1.2 | Requirements Peer-Review | ARCHITECT | PEER-REVIEW | `02_architect_peer_review.md` | `docs/requirements/peer_review_report.md` |
+| **ARCHITECT (2 этапа)** |
+| 2.1 | Architecture Execute | ARCHITECT | EXECUTE | `03_architect_execute.md` | `docs/architecture/` |
+| 2.2 | Architecture Peer-Review | PM | PEER-REVIEW | `04_pm_peer_review.md` | `docs/architecture/peer_review_report.md` |
+| **PM (2 этапа)** |
+| 3.1 | Planning Execute | PM | EXECUTE | `05_pm_execute.md` | `docs/planning/` |
+| 3.2 | Planning Peer-Review | BACKEND_DEV | PEER-REVIEW | `06_backend_peer_review.md` | `docs/planning/peer_review_report.md` |
+| **BACKEND_DEV (2 этапа)** |
+| 4.1 | Backend Execute | BACKEND_DEV | EXECUTE | `07_backend_execute.md` | `src/backend/` |
+| 4.2 | Backend Peer-Review | FRONTEND_DEV | PEER-REVIEW | `08_frontend_peer_review.md` | `src/backend/peer_review_report.md` |
+| **FRONTEND_DEV (2 этапа)** |
+| 5.1 | Frontend Execute | FRONTEND_DEV | EXECUTE | `09_frontend_execute.md` | `src/frontend/` |
+| 5.2 | Frontend Peer-Review | INFRA_DEVOPS | PEER-REVIEW | `10_infra_peer_review.md` | `src/frontend/peer_review_report.md` |
+| **INFRA_DEVOPS (2 этапа)** |
+| 6.1 | Infra Execute | INFRA_DEVOPS | EXECUTE | `11_infra_execute.md` | `infra/` |
+| 6.2 | Infra Peer-Review | QA | PEER-REVIEW | `12_qa_peer_review.md` | `infra/peer_review_report.md` |
+| **QA (2 этапа)** |
+| 7.1 | QA Execute | QA | EXECUTE | `13_qa_execute.md` | `tests/` |
+| 7.2 | QA Peer-Review | SECURITY | PEER-REVIEW | `14_security_peer_review.md` | `tests/peer_review_report.md` |
+| **SECURITY (2 этапа)** |
+| 8.1 | Security Execute | SECURITY | EXECUTE | `15_security_execute.md` | `docs/security/` |
+| 8.2 | Security Peer-Review | DOCS | PEER-REVIEW | `16_docs_peer_review.md` | `docs/security/peer_review_report.md` |
+| **DOCS (2 этапа)** |
+| 9.1 | Docs Execute | DOCS | EXECUTE | `17_docs_execute.md` | `docs/` |
+| 9.2 | Docs Peer-Review | OWNER | PEER-REVIEW | `18_owner_peer_review.md` | `docs/peer_review_report.md` |
+| **OWNER (1 этап)** |
+| 10.0 | Owner Final Approve | OWNER | FINAL_APPROVE | `19_owner_approve.md` | `docs/owner_final_approval.md` |
+
+**ИТОГО: 2 + 18 + 7 = 27 промптов**
+
+### Правила двойного контроля:
+
+1. **EXECUTE** — создание артефактов (роль создает свои артефакты)
+2. **PEER-REVIEW** — кросс-проверка (следующая роль проверяет предыдущую)
+
+**SELF-REVIEW удален:** Агенты не видят свои ошибки (галлюцинации "всё OK"), не генерируют новые insights. PEER-REVIEW обеспечивает 95% качества, что достаточно для production.
+
+### PEER-REVIEW Mapping (цепочка контроля):
+
+- ANALYST → ARCHITECT (проверяет требования)
+- ARCHITECT → PM (проверяет архитектуру)
+- PM → BACKEND_DEV (проверяет план)
+- BACKEND_DEV → FRONTEND_DEV (проверяет API)
+- FRONTEND_DEV → INFRA_DEVOPS (проверяет UI)
+- INFRA_DEVOPS → QA (проверяет деплой)
+- QA → SECURITY (проверяет тесты)
+- SECURITY → DOCS (проверяет безопасность)
+- DOCS → OWNER (финальная проверка)
+
+### Вердикты:
+
+- **APPROVED** → переход к следующему этапу
+- **NEEDS_REVISION** → возврат к EXECUTE с комментариями
+- **BLOCKED** → требуется вмешательство OWNER
+
+### Промпты:
+
+Все промпты находятся в `PROMPTS/` и следуют нумерации: `{номер}_{роль}_{режим}.md`
 
 ## 🔄 ЦИКЛ ИСПОЛНЕНИЯ (Fetch-Decode-Execute)
 
@@ -74,7 +113,8 @@ WRITEBACK: Обновляет WORKFLOW_STATE и создает артефакт�
 ### Статусы этапов (FSM):
 ```
 EXECUTE: NOT_STARTED → IN_PROGRESS → DONE
-REVIEW: NOT_STARTED → IN_PROGRESS → APPROVED / NEEDS_REVISION / BLOCKED
+PEER-REVIEW: NOT_STARTED → IN_PROGRESS → APPROVED / NEEDS_REVISION / BLOCKED
+FINAL_APPROVE: NOT_STARTED → IN_PROGRESS → APPROVED / REJECTED
 ```
 
 ### Обработка исключений:

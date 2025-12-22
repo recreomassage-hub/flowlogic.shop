@@ -1,0 +1,788 @@
+openapi: 3.0.3
+info:
+  title: Flow Logic API
+  version: 1.0.0
+  description: |
+    B2C платформа для оценки качества движения через MediaPipe и коррекции через AI-план.
+    API для управления пользователями, тестами, планами и подписками.
+    
+    Источник требований: docs/requirements/PRD.md (PRD 2.1) — единственный источник истины для всех агентов.
+  contact:
+    name: Flow Logic Team
+    email: team@flowlogic.app
+
+servers:
+  - url: https://api.flowlogic.shop/v1
+    description: Production
+  - url: https://api-staging.flowlogic.shop/v1
+    description: Staging
+
+tags:
+  - name: Authentication
+    description: Регистрация, вход, управление сессиями
+  - name: Users
+    description: Управление профилем пользователя
+  - name: Subscriptions
+    description: Управление подписками (Stripe)
+  - name: Assessments
+    description: Загрузка видео, прохождение тестов, получение результатов
+  - name: Plans
+    description: Планы коррекции (Basic+)
+  - name: Calendar
+    description: Календарь задач (Basic+)
+  - name: Progress
+    description: Прогресс и графики (Basic+)
+
+paths:
+  # ========== AUTHENTICATION ==========
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, wellness_disclaimer_accepted]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: SecurePass123!
+                name:
+                  type: string
+                  example: John Doe
+                wellness_disclaimer_accepted:
+                  type: boolean
+                  example: true
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email уже зарегистрирован
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Вход в систему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Успешный вход
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: refreshToken=xxx; HttpOnly; Secure; SameSite=Strict
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  expires_in:
+                    type: integer
+                    example: 900
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Неверный email или пароль
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Выход из системы
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Успешный выход
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Обновление access token
+      responses:
+        '200':
+          description: Новый access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  expires_in:
+                    type: integer
+
+  # ========== USERS ==========
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Получить текущего пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags: [Users]
+      summary: Обновить профиль пользователя
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Профиль обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ========== SUBSCRIPTIONS ==========
+  /subscriptions:
+    get:
+      tags: [Subscriptions]
+      summary: Получить текущую подписку
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Информация о подписке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '404':
+          description: Подписка не найдена (Free tier)
+
+    post:
+      tags: [Subscriptions]
+      summary: Создать подписку (upgrade)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tier, payment_method_id]
+              properties:
+                tier:
+                  type: string
+                  enum: [basic, pro, proplus]
+                payment_method_id:
+                  type: string
+                  description: Stripe Payment Method ID
+      responses:
+        '201':
+          description: Подписка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  /subscriptions/cancel:
+    post:
+      tags: [Subscriptions]
+      summary: Отменить подписку
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Подписка отменена (доступ до конца периода)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  # ========== ASSESSMENTS ==========
+  /assessments:
+    get:
+      tags: [Assessments]
+      summary: Получить список тестов пользователя
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: '2025-12'
+          description: Фильтр по месяцу (YYYY-MM)
+        - name: test_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 15
+          description: Фильтр по типу теста
+      responses:
+        '200':
+          description: Список тестов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assessments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Assessment'
+
+    post:
+      tags: [Assessments]
+      summary: Начать новый тест (загрузить видео)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [test_id]
+              properties:
+                test_id:
+                  type: integer
+                  minimum: 1
+                  maximum: 15
+                  description: ID теста из каталога (1-15)
+      responses:
+        '201':
+          description: Тест создан, получен presigned URL для загрузки видео
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assessment_id:
+                    type: string
+                    format: uuid
+                  upload_url:
+                    type: string
+                    format: uri
+                    description: Presigned S3 URL для загрузки видео
+                  expires_in:
+                    type: integer
+                    example: 3600
+        '403':
+          description: Превышен лимит тестов для текущего tier
+        '429':
+          description: Превышен лимит попыток за день
+
+  /assessments/{assessment_id}:
+    get:
+      tags: [Assessments]
+      summary: Получить результат теста
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assessment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Результат теста
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assessment'
+        '404':
+          description: Тест не найден
+
+    put:
+      tags: [Assessments]
+      summary: Завершить загрузку видео (trigger processing)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assessment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [video_uploaded]
+              properties:
+                video_uploaded:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Видео загружено, обработка начата
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assessment'
+
+  /assessments/results:
+    get:
+      tags: [Assessments]
+      summary: Получить сводку результатов (score + problem areas)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Сводка результатов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overall_score:
+                    type: string
+                    enum: [pass, limited, significant]
+                  problem_areas:
+                    type: object
+                    properties:
+                      p1:
+                        type: array
+                        items:
+                          type: string
+                        description: Root cause candidates
+                      p2:
+                        type: array
+                        items:
+                          type: string
+                        description: Consequence patterns
+                  tests_completed:
+                    type: integer
+                  tests_available:
+                    type: integer
+
+  # ========== PLANS (Basic+) ==========
+  /plans:
+    get:
+      tags: [Plans]
+      summary: Получить активный план коррекции
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Активный план
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '403':
+          description: Требуется Basic+ подписка
+        '404':
+          description: План не найден
+
+    post:
+      tags: [Plans]
+      summary: Сгенерировать новый план (AI Plan Generator)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                based_on_tests:
+                  type: array
+                  items:
+                    type: integer
+                  description: Список test_id для генерации плана
+      responses:
+        '201':
+          description: План сгенерирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '403':
+          description: Требуется Basic+ подписка
+
+  # ========== CALENDAR (Basic+) ==========
+  /calendar/tasks:
+    get:
+      tags: [Calendar]
+      summary: Получить задачи календаря
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+            example: '2025-12-22'
+          description: Дата (по умолчанию сегодня)
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Начало диапазона
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Конец диапазона
+      responses:
+        '200':
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalendarTask'
+        '403':
+          description: Требуется Basic+ подписка
+
+  /calendar/tasks/{task_id}/complete:
+    post:
+      tags: [Calendar]
+      summary: Отметить задачу как выполненную
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Задача отмечена как выполненная
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarTask'
+
+  # ========== PROGRESS (Basic+) ==========
+  /progress/dashboard:
+    get:
+      tags: [Progress]
+      summary: Получить дашборд прогресса
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Дашборд с метриками
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressDashboard'
+        '403':
+          description: Требуется Basic+ подписка
+
+  /progress/charts:
+    get:
+      tags: [Progress]
+      summary: Получить данные для графиков
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chart_type
+          in: query
+          schema:
+            type: string
+            enum: [streak, completion, improvements]
+          description: Тип графика
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 7
+            maximum: 90
+          description: Количество дней для отображения
+      responses:
+        '200':
+          description: Данные для графика
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chart_type:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+        '403':
+          description: Требуется Basic+ подписка
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        tier:
+          type: string
+          enum: [free, basic, pro, proplus]
+        wellness_disclaimer_accepted:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Subscription:
+      type: object
+      properties:
+        subscription_id:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        tier:
+          type: string
+          enum: [basic, pro, proplus]
+        status:
+          type: string
+          enum: [active, canceled, past_due, expired]
+        current_period_start:
+          type: string
+          format: date-time
+        current_period_end:
+          type: string
+          format: date-time
+        cancel_at_period_end:
+          type: boolean
+
+    Assessment:
+      type: object
+      properties:
+        assessment_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        test_id:
+          type: integer
+          minimum: 1
+          maximum: 15
+        test_name:
+          type: string
+        status:
+          type: string
+          enum: [processing, completed, failed, invalid]
+        attempt_number:
+          type: integer
+        result:
+          type: object
+          nullable: true
+          properties:
+            score:
+              type: string
+              enum: [pass, limited, significant]
+            confidence:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 1
+            problem_areas:
+              type: array
+              items:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Plan:
+      type: object
+      properties:
+        plan_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        tier:
+          type: string
+          enum: [basic, pro, proplus]
+        is_active:
+          type: boolean
+        based_on_tests:
+          type: array
+          items:
+            type: integer
+        problem_areas:
+          type: object
+          properties:
+            p1:
+              type: array
+              items:
+                type: string
+            p2:
+              type: array
+              items:
+                type: string
+        exercises:
+          type: array
+          items:
+            type: object
+            properties:
+              exercise_id:
+                type: string
+              name:
+                type: string
+              description:
+                type: string
+              priority:
+                type: string
+                enum: [must, should]
+        created_at:
+          type: string
+          format: date-time
+
+    CalendarTask:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        task_date:
+          type: string
+          format: date
+        exercise_id:
+          type: string
+        priority:
+          type: string
+          enum: [must, should]
+        completed:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ProgressDashboard:
+      type: object
+      properties:
+        current_streak:
+          type: integer
+        longest_streak:
+          type: integer
+        completion_today:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        tasks_completed_today:
+          type: integer
+        tasks_total_today:
+          type: integer
+        test_improvements:
+          type: array
+          items:
+            type: object
+            properties:
+              test_id:
+                type: integer
+              improvement_percentage:
+                type: number
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+
+    Unauthorized:
+      description: Требуется аутентификация
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Unauthorized
+

@@ -1,0 +1,258 @@
+service: flowlogic-backend
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  architecture: arm64
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 30
+  environment:
+    STAGE: ${self:provider.stage}
+    AWS_REGION: ${self:provider.region}
+    NODE_ENV: ${self:custom.nodeEnv.${self:provider.stage}}
+    COGNITO_USER_POOL_ID: ${ssm:/flowlogic/${self:provider.stage}/cognito/user-pool-id}
+    COGNITO_CLIENT_ID: ${ssm:/flowlogic/${self:provider.stage}/cognito/client-id}
+    DYNAMODB_USERS_TABLE: ${self:custom.tables.users}
+    DYNAMODB_SUBSCRIPTIONS_TABLE: ${self:custom.tables.subscriptions}
+    DYNAMODB_ASSESSMENTS_TABLE: ${self:custom.tables.assessments}
+    DYNAMODB_PLANS_TABLE: ${self:custom.tables.plans}
+    DYNAMODB_CALENDAR_TASKS_TABLE: ${self:custom.tables.calendarTasks}
+    DYNAMODB_PROGRESS_TABLE: ${self:custom.tables.progress}
+    DYNAMODB_USER_LIMITS_TABLE: ${self:custom.tables.userLimits}
+    DYNAMODB_MIGRATIONS_TABLE: ${self:custom.tables.migrations}
+    S3_BUCKET: ${self:custom.s3.bucket}
+    STRIPE_SECRET_KEY: ${ssm:/flowlogic/${self:provider.stage}/stripe/secret-key~true}
+    FRONTEND_URL: ${self:custom.frontendUrl.${self:provider.stage}}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.users}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.subscriptions}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.assessments}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.plans}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.calendarTasks}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.progress}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.userLimits}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.migrations}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.users}/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.subscriptions}/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.assessments}/index/*
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:GetObjectPresignedUrl
+          Resource:
+            - arn:aws:s3:::${self:custom.s3.bucket}/*
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminGetUser
+            - cognito-idp:AdminUpdateUserAttributes
+            - cognito-idp:AdminDeleteUser
+            - cognito-idp:ListUsers
+          Resource:
+            - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${ssm:/flowlogic/${self:provider.stage}/cognito/user-pool-id}
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: '*'
+
+custom:
+  nodeEnv:
+    dev: development
+    staging: staging
+    prod: production
+  tables:
+    users: flowlogic-${self:provider.stage}-users
+    subscriptions: flowlogic-${self:provider.stage}-subscriptions
+    assessments: flowlogic-${self:provider.stage}-assessments
+    plans: flowlogic-${self:provider.stage}-plans
+    calendarTasks: flowlogic-${self:provider.stage}-calendar-tasks
+    progress: flowlogic-${self:provider.stage}-progress
+    userLimits: flowlogic-${self:provider.stage}-user-limits
+    migrations: flowlogic-${self:provider.stage}-migrations
+  s3:
+    bucket: flowlogic-${self:provider.stage}-videos
+  frontendUrl:
+    dev: http://localhost:3000
+    staging: https://staging.flowlogic.shop
+    prod: https://flowlogic.shop
+
+functions:
+  api:
+    handler: dist/index.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            origin: ${self:custom.frontendUrl.${self:provider.stage}}
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+      - http:
+          path: /
+          method: ANY
+          cors:
+            origin: ${self:custom.frontendUrl.${self:provider.stage}}
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+
+resources:
+  Resources:
+    # DynamoDB Tables
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.users}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: email-index
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    SubscriptionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.subscriptions}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: subscription_id
+            AttributeType: S
+          - AttributeName: stripe_customer_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+          - AttributeName: subscription_id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: stripe-customer-index
+            KeySchema:
+              - AttributeName: stripe_customer_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    AssessmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.assessments}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: assessment_id
+            AttributeType: S
+          - AttributeName: test_id
+            AttributeType: N
+          - AttributeName: month_key
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+          - AttributeName: assessment_id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: test-type-index
+            KeySchema:
+              - AttributeName: test_id
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: month-index
+            KeySchema:
+              - AttributeName: month_key
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    # S3 Bucket
+    VideosBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.s3.bucket}
+        VersioningConfiguration:
+          Status: Enabled
+        LifecycleConfiguration:
+          Rules:
+            - Id: TransitionToGlacier
+              Status: Enabled
+              Transitions:
+                - TransitionInDays: 30
+                  StorageClass: GLACIER
+            - Id: DeleteOldVideos
+              Status: Enabled
+              ExpirationInDays: 90
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+
+  Outputs:
+    # ServiceEndpoint is automatically provided by Serverless Framework
+    # Use: serverless info --stage <stage> to get the endpoint URL
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-typescript
+

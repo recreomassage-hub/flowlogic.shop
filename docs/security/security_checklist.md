@@ -9,12 +9,13 @@
 - [ ] Password reset flow защищен
 
 ## DATA LAYER
-- [ ] RLS policies включены на всех таблицах (Supabase)
+- [ ] DynamoDB encryption at rest (KMS) включена
+- [ ] DynamoDB IAM policies настроены правильно
 - [ ] Sensitive columns защищены (password, email)
 - [ ] Backup strategy документирована
 - [ ] Нет public read доступа к приватным таблицам
-- [ ] Database не открыта в интернет (только через proxy)
-- [ ] Encryption at rest включена
+- [ ] Database не открыта в интернет (только через Lambda/VPC)
+- [ ] DynamoDB Streams настроены для аудита (если требуется)
 
 ## INFRASTRUCTURE
 - [ ] Все endpoints требуют HTTPS
@@ -32,24 +33,24 @@
 - [ ] XSS защита включена
 - [ ] CORS настроен правильно
 
-## SUPABASE-СПЕЦИФИЧНО
-- [ ] Row Level Security (RLS) policies audit пройден
-- [ ] Realtime subscription security проверена
-- [ ] Storage bucket policies настроены
-- [ ] JWT/auth token handling безопасен
-- [ ] Webhook security (если используется) проверена
+## AWS-СПЕЦИФИЧНО
+- [ ] DynamoDB encryption at rest (KMS) включена
+- [ ] DynamoDB IAM policies настроены правильно (принцип наименьших привилегий)
+- [ ] Lambda function IAM roles используют принцип наименьших привилегий
+- [ ] API Gateway throttling и WAF настроены
+- [ ] Cognito User Pool security policies настроены (password policy, MFA)
+- [ ] S3 bucket policies настроены (no public access, encryption)
+- [ ] CloudWatch Logs retention настроен (7 дней для staging, 30 дней для production)
+- [ ] SSM Parameter Store используется для секретов (не в коде)
+- [ ] AWS KMS используется для encryption keys
+- [ ] VPC endpoints настроены (если требуется)
+- [ ] CloudTrail включен для аудита
 
 ## VERCEL-СПЕЦИФИЧНО
 - [ ] Environment variables security проверена
 - [ ] API route security (rate limiting, auth middleware) настроена
 - [ ] Serverless cold starts безопасны
 - [ ] Edge function security проверена
-
-## RAILWAY-СПЕЦИФИЧНО
-- [ ] Container image scanning пройден
-- [ ] Network policies между сервисами настроены
-- [ ] Внешний доступ к БД через proxy
-- [ ] Secret rotation механизм настроен
 
 ## SECRETS MANAGEMENT
 - [ ] `.env.example` проверен на полноту всех переменных
@@ -80,7 +81,8 @@
 
 ---
 
-**Дата проверки**: [DATE]  
+**Дата проверки**: 2025-12-22  
 **Проверил**: @SECURITY  
-**Статус**: [ ] PASSED [ ] NEEDS_REVISION
+**Статус**: [ ] PASSED [x] NEEDS_REVISION  
+**Примечания**: Checklist обновлен для соответствия AWS архитектуре. Требуется проверка всех пунктов перед релизом.
 
