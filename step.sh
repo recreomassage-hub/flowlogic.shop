@@ -49,6 +49,10 @@ else
     git commit -m "$COMMIT_MSG" 2>/dev/null
 fi
 
+# Автоопределение правильного remote
+REMOTE=$(git remote get-url flowlogic 2>/dev/null || echo "origin")
+git push "$REMOTE" main 2>/dev/null && echo "✅ Pushed to $REMOTE" || echo "⚠️ Push failed (возможно, нет прав или нет сети)"
+
 echo ""
 echo "✅ Коммит выполнен!"
 echo "📊 Статистика:"
