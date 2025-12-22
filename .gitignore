@@ -32,3 +32,13 @@ reports/*.pdf
 tmp/
 temp/
 
+# Obsidian
+.obsidian/
+*.obsidian
+
+# SSH keys (if accidentally added)
+*.pub
+id_rsa
+id_ed25519
+known_hosts
+

@@ -814,8 +814,8 @@ DYNAMODB_EXERCISES_TABLE=flowlogic-${STAGE}-exercises
 S3_VIDEOS_BUCKET=flowlogic-${STAGE}-videos
 
 # Stripe
-STRIPE_SECRET_KEY=sk_test_xxxxx
-STRIPE_WEBHOOK_SECRET=whsec_xxxxx
+STRIPE_SECRET_KEY=your-stripe-secret-key-here
+STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret-here
 
 # Sentry
 SENTRY_DSN=https://xxxxx@sentry.io/xxxxx
