@@ -20,8 +20,9 @@
 | 4 | BACKEND_DEV | ROLES/04_backend_dev.md | src/backend/ |
 | 5 | FRONTEND_DEV | ROLES/05_frontend_dev.md | src/frontend/ |
 | 6 | INFRA_DEVOPS | ROLES/06_infra_devops.md | infra/ |
-| 7 | QA | ROLES/07_qa.md | tests/ |
-| 8 | DOCS | ROLES/08_docs.md | docs/ |
+| 7 | SECURITY | ROLES/09_security.md | docs/security/ |
+| 8 | QA | ROLES/07_qa.md | tests/ |
+| 9 | DOCS | ROLES/08_docs.md | docs/ |
 
 ## 🔄 ЦИКЛ ИСПОЛНЕНИЯ (Fetch-Decode-Execute)
 

@@ -85,6 +85,7 @@ icons:
   BACKEND_DEV: "⚙️"
   FRONTEND_DEV: "🎨"
   INFRA_DEVOPS: "🚀"
+  SECURITY: "🛡️"
   QA: "🧪"
   DOCS: "📚"
   OWNER: "👑"
