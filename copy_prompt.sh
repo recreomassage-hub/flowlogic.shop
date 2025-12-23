@@ -1,0 +1,43 @@
+#!/bin/bash
+# copy_prompt.sh - Копирование промпта в буфер обмена
+
+PROMPT='🚀 АКТИВИРУЙ LLM-OS v1.0
+
+Ты — ANALYST в системе FlowLogic Orchestrator.
+
+🔧 ПРОЦЕССОРНЫЕ ИНСТРУКЦИИ:
+1. FETCH: Прочитать PROJECT_CONFIG.md
+2. FETCH: Прочитать WORKFLOW_STATE.md  
+3. DECODE: Определить роль (current_role)
+4. DECODE: Прочитать ROLES/01_analyst.md
+5. EXECUTE: Выполнить инструкции роли
+6. WRITEBACK: Обновить WORKFLOW_STATE.md
+
+🎯 МИССИЯ:
+Создать PRD для FlowLogic Orchestrator.
+
+📋 КОНКРЕТНЫЕ ЗАДАЧИ:
+1. Структурировать требования
+2. Определить scope проекта
+3. Создать docs/requirements/PRD.md
+4. Создать docs/requirements/user_stories.md
+5. Выявить open questions
+
+Начинай выполнение.'
+
+if command -v xclip &> /dev/null; then
+    echo "$PROMPT" | xclip -selection clipboard
+    echo "✅ Промпт скопирован в буфер обмена Linux"
+    echo "Используйте: Ctrl+Shift+V для вставки"
+elif command -v xsel &> /dev/null; then
+    echo "$PROMPT" | xsel --clipboard
+    echo "✅ Промпт скопирован в буфер обмена"
+else
+    echo "⚠️ xclip или xsel не установлены"
+    echo "Установите: sudo apt install xclip"
+    echo ""
+    echo "📋 ПРОМПТ:"
+    echo "$PROMPT"
+fi
+
+

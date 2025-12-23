@@ -1,0 +1,25 @@
+{
+  "name": "flowlogic-serverless",
+  "version": "1.0.0",
+  "description": "Serverless Framework configuration for Flow Logic backend",
+  "scripts": {
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:staging": "serverless deploy --stage staging",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove:dev": "serverless remove --stage dev",
+    "remove:staging": "serverless remove --stage staging",
+    "remove:prod": "serverless remove --stage prod",
+    "info:dev": "serverless info --stage dev",
+    "info:staging": "serverless info --stage staging",
+    "info:prod": "serverless info --stage prod",
+    "logs:dev": "serverless logs -f api --stage dev --tail",
+    "logs:staging": "serverless logs -f api --stage staging --tail",
+    "logs:prod": "serverless logs -f api --stage prod --tail"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.0",
+    "serverless-plugin-typescript": "^2.1.5"
+  }
+}
+

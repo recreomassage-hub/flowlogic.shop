@@ -1,0 +1,64 @@
+# LLM-OS System
+*.log
+*.tmp
+*.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+.secrets/
+
+# Reports
+reports/*.html
+reports/*.pdf
+
+# Temporary
+tmp/
+temp/
+
+# Obsidian
+.obsidian/
+*.obsidian
+
+# SSH keys and certificates (CRITICAL: Never commit private keys!)
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+id_ecdsa
+id_ecdsa.pub
+id_dsa
+id_dsa.pub
+*.pub
+known_hosts
+authorized_keys
+*.ppk
+ssh_config
+config
+
+id_*
+*.key
+*.pem
+.obsidian/
