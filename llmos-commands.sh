@@ -120,6 +120,80 @@ case "$1" in
             exit 1
         fi
         ;;
+    "deploy")
+        echo "🚀 LLM-OS: Production Deployment"
+        echo "================================"
+        echo ""
+        
+        # Проверяем статус проекта
+        STATUS=$(grep "overall_status" WORKFLOW_STATE.md 2>/dev/null | head -1 | cut -d':' -f2 | tr -d ' *')
+        if [ "$STATUS" != "PRODUCTION_READY" ]; then
+            echo "⚠️  Внимание: Проект не готов к production"
+            echo "   Текущий статус: $STATUS"
+            echo "   Требуется: PRODUCTION_READY"
+            echo ""
+            read -p "Продолжить деплой? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "❌ Деплой отменен"
+                exit 1
+            fi
+        fi
+        
+        # Получаем версию из WORKFLOW_STATE.md или используем v1.0.0
+        VERSION=$(grep "version:" WORKFLOW_STATE.md 2>/dev/null | head -1 | cut -d':' -f2 | tr -d ' *' || echo "1.0.0")
+        TAG="v${VERSION}"
+        
+        echo "📦 Создание git tag: $TAG"
+        if git tag -a "$TAG" -m "Release $TAG - Production deployment" 2>/dev/null; then
+            echo "✅ Tag создан: $TAG"
+        else
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+                echo "⚠️  Tag $TAG уже существует"
+                read -p "Перезаписать? (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    git tag -d "$TAG" 2>/dev/null
+                    git tag -a "$TAG" -m "Release $TAG - Production deployment"
+                    echo "✅ Tag перезаписан: $TAG"
+                fi
+            else
+                echo "❌ Ошибка создания tag"
+                exit 1
+            fi
+        fi
+        
+        echo ""
+        echo "📤 Push tags в remote..."
+        REMOTE=$(git remote get-url flowlogic 2>/dev/null || git remote get-url origin 2>/dev/null || echo "origin")
+        if git push "$REMOTE" "$TAG" 2>/dev/null; then
+            echo "✅ Tags отправлены в $REMOTE"
+        else
+            echo "⚠️  Не удалось отправить tags (возможно, нет прав или нет сети)"
+        fi
+        
+        echo ""
+        echo "🚀 Инструкции для деплоя:"
+        echo ""
+        echo "1. Frontend (Vercel):"
+        echo "   cd src/frontend"
+        echo "   vercel deploy --prod"
+        echo "   # или через GitHub Actions (автоматически при push в main)"
+        echo ""
+        echo "2. Backend (AWS Serverless):"
+        echo "   cd infra/serverless"
+        echo "   serverless deploy --stage production"
+        echo "   # Требуется: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
+        echo ""
+        echo "3. Проверка деплоя:"
+        echo "   - Frontend: https://flowlogic.shop (или ваш Vercel URL)"
+        echo "   - Backend: Проверить API Gateway endpoint"
+        echo "   - Smoke tests: npm run test:smoke -- --env=production"
+        echo ""
+        echo "📚 Подробнее: docs/deployment_guide.md"
+        echo ""
+        echo "✅ Tag $TAG создан и отправлен. Готово к деплою!"
+        ;;
     "help")
         echo "🚀 LLM-OS Команды (27 промптов система, оптимизировано):"
         echo "  ./llmos tz-full        - TZ Pipeline (полный цикл)"
@@ -130,6 +204,7 @@ case "$1" in
         echo "  ./llmos status         - Показать статус"
         echo "  ./llmos commit|step    - Сделать коммит (атомарный)"
         echo "  ./llmos monitor        - Запустить мониторинг"
+        echo "  ./llmos deploy         - Production deployment (tag + инструкции)"
         echo "  ./llmos help           - Показать эту справку"
         echo ""
         echo "Роли: ANALYST, ARCHITECT, PM, BACKEND_DEV, FRONTEND_DEV,"
@@ -138,7 +213,7 @@ case "$1" in
         echo "⚠️ SELF-REVIEW удален (0 ценность, галлюцинации агента)"
         ;;
     *)
-        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|step|monitor|help]"
+        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|step|monitor|deploy|help]"
         ;;
 esac
 
