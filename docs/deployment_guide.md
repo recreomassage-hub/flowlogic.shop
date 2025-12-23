@@ -258,6 +258,25 @@ npm run migrate
 
 ## 🔐 Secrets Management
 
+### ⚠️ КРИТИЧЕСКИ ВАЖНО: Защита от утечек секретов
+
+**После инцидента с утечкой SSH ключа (2025-12-23), следующие правила обязательны:**
+
+1. **НИКОГДА не добавляйте файлы `.env` в Git**
+   - Убедитесь, что `.env` прописан в `.gitignore` (уже настроено)
+   - Используйте только `.env.example` как шаблон
+   - Все реальные секреты должны храниться в AWS SSM Parameter Store или GitHub Secrets
+
+2. **Secret Scanning обязателен**
+   - Все коммиты должны проходить через проверку GitGuardian (или аналоги) перед слиянием в ветку `main`
+   - GitHub Secret Scanning должен быть включен с push protection
+   - Это предотвращает повторную утечку SSH-ключей, AWS Access Keys и других секретов
+
+3. **Проверка перед каждым PR**
+   - GFC (Git Flow Controller) проверяет входящий код на соответствие требованиям
+   - Проверка наличия всех переменных окружения в `.env.example`
+   - Проверка отсутствия hardcoded секретов в коде
+
 ### AWS SSM Parameter Store
 
 Store secrets in AWS SSM Parameter Store:
@@ -298,6 +317,55 @@ For CI/CD, set secrets in GitHub:
    - `VERCEL_ORG_ID`
    - `VERCEL_PROJECT_ID`
 
+### Secret Scanning (GitGuardian / GitHub Secret Scanning)
+
+**КРИТИЧЕСКИ ВАЖНО:** После инцидента с утечкой SSH ключа (2025-12-23), все коммиты должны проходить через проверку Secret Scanning перед слиянием в ветку `main`.
+
+#### Настройка GitHub Secret Scanning
+
+1. **Включите Secret Scanning:**
+   - Repository Settings → Security → Code security and analysis
+   - Enable "Secret scanning" (GitHub Advanced Security)
+   - Enable "Push protection" (блокирует push с секретами)
+
+2. **Настройка GitGuardian (рекомендуется):**
+   - Интеграция с GitHub через GitGuardian App
+   - Автоматическое сканирование всех коммитов
+   - Уведомления в реальном времени
+
+3. **Проверка перед каждым PR:**
+   - GFC (Git Flow Controller) автоматически проверяет входящий код
+   - Проверка на наличие hardcoded секретов
+   - Проверка структуры AWS (нет изменений, нарушающих архитектуру)
+   - Проверка наличия всех переменных окружения в `.env.example`
+
+#### Что проверяется:
+
+- SSH Private Keys (id_rsa, id_ed25519, *.pem)
+- AWS Access Keys (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+- API Keys (Stripe, Sentry, etc.)
+- Database credentials
+- JWT secrets
+- OAuth tokens
+
+#### Процесс проверки:
+
+1. **Pre-commit hook (опционально):**
+   ```bash
+   # Установите git-secrets
+   git secrets --install
+   git secrets --register-aws
+   ```
+
+2. **GitHub Actions workflow:**
+   - Автоматическое сканирование при каждом PR
+   - Блокировка merge при обнаружении секретов
+
+3. **GFC проверка:**
+   - Проверка структуры кода
+   - Проверка наличия всех переменных в `.env.example`
+   - Проверка отсутствия секретов в коде
+
 ---
 
 ## 🔄 CI/CD Configuration
@@ -331,6 +399,8 @@ git push origin main
 
 ## 📊 Monitoring Setup
 
+> **Для Deploy Supervisor (DS):** Разделы Monitoring Setup и Post-Deployment Checklist являются основой для автоматических проверок после деплоя. DS использует эти метрики для подтверждения успешности операции.
+
 ### CloudWatch Logs
 
 Logs are automatically created for Lambda functions. View logs:
@@ -354,6 +424,28 @@ Monitor:
 3. Add to environment variables:
    ```env
    SENTRY_DSN=https://xxx@sentry.io/xxx
+   ```
+
+### DS Monitoring Integration
+
+DS автоматически проверяет следующие метрики после деплоя:
+
+1. **Error Rate Check:**
+   ```bash
+   # DS проверяет, что error rate не превышает 1%
+   ERROR_RATE=$(aws cloudwatch get-metric-statistics ...)
+   if [ "$ERROR_RATE" -gt 1 ]; then
+     echo "⚠️  High error rate detected"
+   fi
+   ```
+
+2. **Latency Check:**
+   ```bash
+   # DS проверяет, что p95 latency < 500ms
+   P95_LATENCY=$(aws cloudwatch get-metric-statistics ...)
+   if [ "$P95_LATENCY" -gt 500 ]; then
+     echo "⚠️  High latency detected"
+   fi
    ```
 
 ---
@@ -398,10 +490,16 @@ vercel rollback
 
 ## ✅ Post-Deployment Checklist
 
+> **Для Deploy Supervisor (DS):** Этот чеклист является основой для автоматических проверок после деплоя. DS должен проходить по каждому пункту и подтверждать успешность операции.
+
 ### Backend
 
 - [ ] API Gateway endpoint accessible
 - [ ] Health check endpoint returns `200 OK`
+  ```bash
+  curl https://api.flowlogic.shop/v1/health
+  # Ожидаемый ответ: {"status": "healthy", ...}
+  ```
 - [ ] DynamoDB tables created
 - [ ] S3 bucket created and accessible
 - [ ] Cognito User Pool configured
@@ -422,6 +520,40 @@ vercel rollback
 - [ ] Payment flow tested (Stripe)
 - [ ] Video upload working
 - [ ] Assessment processing working
+
+### DS (Deploy Supervisor) Automated Checks
+
+DS использует этот чеклист для автоматической проверки после деплоя:
+
+1. **Health Check:**
+   ```bash
+   # DS проверяет health endpoint
+   HEALTH_STATUS=$(curl -s https://api.flowlogic.shop/v1/health | jq -r '.status')
+   if [ "$HEALTH_STATUS" != "healthy" ]; then
+     echo "❌ Health check failed"
+     exit 1
+   fi
+   ```
+
+2. **API Accessibility:**
+   ```bash
+   # DS проверяет доступность API
+   API_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://api.flowlogic.shop/v1/health)
+   if [ "$API_RESPONSE" != "200" ]; then
+     echo "❌ API not accessible"
+     exit 1
+   fi
+   ```
+
+3. **Frontend Accessibility:**
+   ```bash
+   # DS проверяет доступность frontend
+   FRONTEND_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://flowlogic.shop)
+   if [ "$FRONTEND_RESPONSE" != "200" ]; then
+     echo "❌ Frontend not accessible"
+     exit 1
+   fi
+   ```
 
 ---
 
