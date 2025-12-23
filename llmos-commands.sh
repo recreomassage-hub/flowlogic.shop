@@ -108,9 +108,17 @@ case "$1" in
         echo "  Следующий промпт: $(get_next_prompt)"
         grep "выполнено:" WORKFLOW_STATE.md 2>/dev/null | head -1 || echo "  Прогресс: не найден"
         ;;
-    "commit")
+    "commit"|"step")
         echo "💾 Выполнение коммита..."
         ./step.sh
+        ;;
+    "monitor")
+        if [ -f "./monitor.sh" ]; then
+            ./monitor.sh
+        else
+            echo "❌ monitor.sh не найден"
+            exit 1
+        fi
         ;;
     "help")
         echo "🚀 LLM-OS Команды (27 промптов система, оптимизировано):"
@@ -120,7 +128,8 @@ case "$1" in
         echo "  ./llmos peer [ROLE]    - PEER-REVIEW режим для роли"
         echo "  ./llmos approve        - OWNER Final Approval"
         echo "  ./llmos status         - Показать статус"
-        echo "  ./llmos commit         - Сделать коммит"
+        echo "  ./llmos commit|step    - Сделать коммит (атомарный)"
+        echo "  ./llmos monitor        - Запустить мониторинг"
         echo "  ./llmos help           - Показать эту справку"
         echo ""
         echo "Роли: ANALYST, ARCHITECT, PM, BACKEND_DEV, FRONTEND_DEV,"
@@ -129,7 +138,7 @@ case "$1" in
         echo "⚠️ SELF-REVIEW удален (0 ценность, галлюцинации агента)"
         ;;
     *)
-        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|help]"
+        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|step|monitor|help]"
         ;;
 esac
 
