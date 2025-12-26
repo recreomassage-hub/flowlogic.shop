@@ -1,0 +1,171 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LambdaDeploy",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:ListFunctions",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:GetPolicy",
+        "lambda:TagResource",
+        "lambda:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:lambda:*:*:function:flowlogic-*",
+        "arn:aws:lambda:*:*:function:*-flowlogic-*"
+      ]
+    },
+    {
+      "Sid": "APIGatewayDeploy",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DynamoDBManage",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:UpdateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:ListTables",
+        "dynamodb:TagResource",
+        "dynamodb:UntagResource",
+        "dynamodb:CreateGlobalSecondaryIndex",
+        "dynamodb:UpdateGlobalSecondaryIndex",
+        "dynamodb:DeleteGlobalSecondaryIndex"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:*:*:table/flowlogic-*"
+      ]
+    },
+    {
+      "Sid": "S3Manage",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketLifecycleConfiguration",
+        "s3:PutBucketLifecycleConfiguration",
+        "s3:GetBucketEncryption",
+        "s3:PutBucketEncryption",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:GetBucketTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::flowlogic-*"
+      ]
+    },
+    {
+      "Sid": "SSMRead",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:DescribeParameters"
+      ],
+      "Resource": [
+        "arn:aws:ssm:*:*:parameter/flowlogic/*"
+      ]
+    },
+    {
+      "Sid": "CognitoRead",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:ListUserPools"
+      ],
+      "Resource": [
+        "arn:aws:cognito-idp:*:*:userpool/*"
+      ]
+    },
+    {
+      "Sid": "CloudFormationManage",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:GetTemplate",
+        "cloudformation:ValidateTemplate",
+        "cloudformation:ListStacks"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:*:*:stack/flowlogic-*/*"
+      ]
+    },
+    {
+      "Sid": "IAMManageLambdaRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:PassRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/flowlogic-*",
+        "arn:aws:iam::*:role/*-flowlogic-*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogsManage",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:DescribeLogGroups",
+        "logs:PutRetentionPolicy"
+      ],
+      "Resource": [
+        "arn:aws:logs:*:*:log-group:/aws/lambda/flowlogic-*"
+      ]
+    },
+    {
+      "Sid": "EventsManage",
+      "Effect": "Allow",
+      "Action": [
+        "events:PutRule",
+        "events:DeleteRule",
+        "events:DescribeRule",
+        "events:PutTargets",
+        "events:RemoveTargets",
+        "events:ListTargetsByRule"
+      ],
+      "Resource": [
+        "arn:aws:events:*:*:rule/flowlogic-*"
+      ]
+    }
+  ]
+}
+
