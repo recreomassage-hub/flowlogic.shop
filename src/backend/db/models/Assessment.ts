@@ -1,4 +1,4 @@
-import { docClient, TABLES, GSIS } from '../../config/database';
+import { docClient, TABLES, GSIS, PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } from '../../config/database';
 
 export type AssessmentStatus = 'processing' | 'completed' | 'failed' | 'invalid';
 export type ScoreResult = 'pass' | 'limited' | 'significant';
@@ -39,10 +39,10 @@ export class AssessmentModel {
       created_at: now,
     };
 
-    await docClient.put({
+    await docClient.send(new PutCommand({
       TableName: TABLES.ASSESSMENTS,
       Item: newAssessment,
-    });
+    }));
 
     return newAssessment;
   }
@@ -51,13 +51,13 @@ export class AssessmentModel {
    * Get assessment by ID
    */
   static async getById(userId: string, assessmentId: string): Promise<Assessment | null> {
-    const result = await docClient.get({
+    const result = await docClient.send(new GetCommand({
       TableName: TABLES.ASSESSMENTS,
       Key: {
         user_id: userId,
         assessment_id: assessmentId,
       },
-    });
+    }));
 
     return (result.Item as Assessment) || null;
   }
@@ -66,7 +66,7 @@ export class AssessmentModel {
    * Get assessments by user ID
    */
   static async getByUserId(userId: string, limit: number = 20): Promise<Assessment[]> {
-    const result = await docClient.query({
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLES.ASSESSMENTS,
       KeyConditionExpression: 'user_id = :userId',
       ExpressionAttributeValues: {
@@ -74,7 +74,7 @@ export class AssessmentModel {
       },
       ScanIndexForward: false, // Most recent first
       Limit: limit,
-    });
+    }));
 
     return (result.Items as Assessment[]) || [];
   }
@@ -83,7 +83,7 @@ export class AssessmentModel {
    * Get assessments by test type (using GSI)
    */
   static async getByTestType(testId: number, limit: number = 20): Promise<Assessment[]> {
-    const result = await docClient.query({
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLES.ASSESSMENTS,
       IndexName: GSIS.ASSESSMENTS_TEST_TYPE,
       KeyConditionExpression: 'test_id = :testId',
@@ -92,7 +92,7 @@ export class AssessmentModel {
       },
       ScanIndexForward: false,
       Limit: limit,
-    });
+    }));
 
     return (result.Items as Assessment[]) || [];
   }
@@ -101,7 +101,7 @@ export class AssessmentModel {
    * Get assessments by month (using GSI)
    */
   static async getByMonth(monthKey: string, limit: number = 20): Promise<Assessment[]> {
-    const result = await docClient.query({
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLES.ASSESSMENTS,
       IndexName: GSIS.ASSESSMENTS_MONTH,
       KeyConditionExpression: 'month_key = :monthKey',
@@ -110,7 +110,7 @@ export class AssessmentModel {
       },
       ScanIndexForward: false,
       Limit: limit,
-    });
+    }));
 
     return (result.Items as Assessment[]) || [];
   }
@@ -141,7 +141,7 @@ export class AssessmentModel {
       expressionAttributeValues[':completed_at'] = new Date().toISOString();
     }
 
-    await docClient.update({
+    await docClient.send(new UpdateCommand({
       TableName: TABLES.ASSESSMENTS,
       Key: {
         user_id: userId,
@@ -151,7 +151,7 @@ export class AssessmentModel {
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW',
-    });
+    }));
 
     const updated = await this.getById(userId, assessmentId);
     if (!updated) {
@@ -165,13 +165,13 @@ export class AssessmentModel {
    * Delete assessment
    */
   static async delete(userId: string, assessmentId: string): Promise<void> {
-    await docClient.delete({
+    await docClient.send(new DeleteCommand({
       TableName: TABLES.ASSESSMENTS,
       Key: {
         user_id: userId,
         assessment_id: assessmentId,
       },
-    });
+    }));
   }
 }
 

@@ -1,4 +1,4 @@
-import { docClient, TABLES, GSIS } from '../../config/database';
+import { docClient, TABLES, GSIS, PutCommand, GetCommand, QueryCommand, UpdateCommand, DeleteCommand } from '../../config/database';
 
 export type SubscriptionTier = 'basic' | 'pro' | 'proplus';
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'expired';
@@ -31,10 +31,10 @@ export class SubscriptionModel {
       updated_at: now,
     };
 
-    await docClient.put({
+    await docClient.send(new PutCommand({
       TableName: TABLES.SUBSCRIPTIONS,
       Item: newSubscription,
-    });
+    }));
 
     return newSubscription;
   }
@@ -43,7 +43,7 @@ export class SubscriptionModel {
    * Get subscription by user ID (most recent active)
    */
   static async getByUserId(userId: string): Promise<Subscription | null> {
-    const result = await docClient.query({
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLES.SUBSCRIPTIONS,
       KeyConditionExpression: 'user_id = :userId',
       ExpressionAttributeValues: {
@@ -51,7 +51,7 @@ export class SubscriptionModel {
       },
       ScanIndexForward: false, // Most recent first
       Limit: 1,
-    });
+    }));
 
     return (result.Items?.[0] as Subscription) || null;
   }
@@ -60,7 +60,7 @@ export class SubscriptionModel {
    * Get subscription by Stripe customer ID (using GSI)
    */
   static async getByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | null> {
-    const result = await docClient.query({
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLES.SUBSCRIPTIONS,
       IndexName: GSIS.SUBSCRIPTIONS_STRIPE_CUSTOMER,
       KeyConditionExpression: 'stripe_customer_id = :stripeCustomerId',
@@ -69,7 +69,7 @@ export class SubscriptionModel {
       },
       ScanIndexForward: false,
       Limit: 1,
-    });
+    }));
 
     return (result.Items?.[0] as Subscription) || null;
   }
@@ -78,13 +78,13 @@ export class SubscriptionModel {
    * Get subscription by subscription ID
    */
   static async getBySubscriptionId(userId: string, subscriptionId: string): Promise<Subscription | null> {
-    const result = await docClient.get({
+    const result = await docClient.send(new GetCommand({
       TableName: TABLES.SUBSCRIPTIONS,
       Key: {
         user_id: userId,
         subscription_id: subscriptionId,
       },
-    });
+    }));
 
     return (result.Item as Subscription) || null;
   }
@@ -113,7 +113,7 @@ export class SubscriptionModel {
     expressionAttributeNames['#updated_at'] = 'updated_at';
     expressionAttributeValues[':updated_at'] = new Date().toISOString();
 
-    await docClient.update({
+    await docClient.send(new UpdateCommand({
       TableName: TABLES.SUBSCRIPTIONS,
       Key: {
         user_id: userId,
@@ -123,7 +123,7 @@ export class SubscriptionModel {
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW',
-    });
+    }));
 
     const updated = await this.getBySubscriptionId(userId, subscriptionId);
     if (!updated) {
@@ -137,13 +137,13 @@ export class SubscriptionModel {
    * Delete subscription
    */
   static async delete(userId: string, subscriptionId: string): Promise<void> {
-    await docClient.delete({
+    await docClient.send(new DeleteCommand({
       TableName: TABLES.SUBSCRIPTIONS,
       Key: {
         user_id: userId,
         subscription_id: subscriptionId,
       },
-    });
+    }));
   }
 }
 

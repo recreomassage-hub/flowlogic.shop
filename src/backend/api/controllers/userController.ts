@@ -12,7 +12,11 @@ export async function getCurrentUser(req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    const user = await UserModel.getById(req.user.sub);
+    // Try to find user by Cognito sub first, then by email
+    let user = await UserModel.getById(req.user.sub);
+    if (!user && req.user.email) {
+      user = await UserModel.getByEmail(req.user.email);
+    }
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
@@ -46,6 +50,16 @@ export async function updateCurrentUser(req: AuthRequest, res: Response): Promis
       return;
     }
 
+    // Try to find user by Cognito sub first, then by email
+    let user = await UserModel.getById(req.user.sub);
+    if (!user && req.user.email) {
+      user = await UserModel.getByEmail(req.user.email);
+    }
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
     const { name } = req.body;
     const updates: Partial<{ name: string }> = {};
 
@@ -53,7 +67,7 @@ export async function updateCurrentUser(req: AuthRequest, res: Response): Promis
       updates.name = name;
     }
 
-    const updatedUser = await UserModel.update(req.user.sub, updates);
+    const updatedUser = await UserModel.update(user.user_id, updates);
 
     res.status(200).json({
       user_id: updatedUser.user_id,

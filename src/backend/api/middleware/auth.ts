@@ -45,8 +45,8 @@ export async function authenticateToken(
     const payload = await getVerifier().verify(token);
     req.user = {
       sub: payload.sub,
-      email: payload.email || '',
-      'cognito:username': payload['cognito:username'] || payload.sub,
+      email: (payload.email || payload.username || '') as string,
+      'cognito:username': (payload['cognito:username'] || payload.username || payload.sub) as string,
     };
 
     next();
