@@ -84,7 +84,13 @@ jobs:
         run: |
           if [ -f "src/backend/package.json" ] && [ -f "src/backend/tsconfig.json" ]; then
             echo "📦 Building backend..."
+            echo "📁 Current directory: $(pwd)"
+            echo "📁 Checking config files:"
+            ls -la src/backend/config/*.ts || echo "⚠️  Config files not found"
             cd src/backend
+            echo "📁 In backend directory: $(pwd)"
+            echo "📁 Config files here:"
+            ls -la config/*.ts || echo "⚠️  Config files not found in backend/"
             npm run build || {
               echo "❌ Backend build failed"
               exit 1
