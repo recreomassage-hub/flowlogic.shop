@@ -1,0 +1,40 @@
+# Игнорировать документацию и примеры
+docs/**/*
+*.md
+*.example
+.env.example
+
+# Игнорировать тестовые файлы
+**/*test*
+**/*spec*
+**/*mock*
+
+# Игнорировать AWS SDK документацию
+aws/dist/**
+
+# Игнорировать примеры кода в документации
+**/examples/**
+**/samples/**
+
+# Игнорировать исторические файлы (если нужно)
+# SECRET_SCANNING_FIX.md
+
+# Игнорировать AWS SDK (много примеров токенов)
+aws/**
+
+# Игнорировать node_modules
+node_modules/**
+
+# Игнорировать dist/build директории
+dist/**
+build/**
+
+# Игнорировать package-lock.json (может содержать примеры)
+package-lock.json
+
+# Игнорировать yarn.lock
+yarn.lock
+
+# Игнорировать исторические документы
+SECRET_SCANNING_FIX.md
+*.fix.md

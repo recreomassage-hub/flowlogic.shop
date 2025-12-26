@@ -1,0 +1,25 @@
+title = "Flow Logic Gitleaks Configuration"
+
+[extend]
+# Используем стандартные правила
+useDefault = true
+
+[allowlist]
+description = "Allowlist для Flow Logic проекта"
+paths = [
+    '''docs/''',
+    '''aws/''',
+    '''node_modules/''',
+    '''dist/''',
+    '''build/''',
+    '''\.env\.example''',
+    '''SECRET_SCANNING_FIX\.md''',
+    '''package-lock\.json''',
+    '''yarn\.lock''',
+    '''\.serverless/''',
+    '''AGENTS_SETUP\.md''',  # Содержит только примеры
+]
+
+commits = [
+    # Можно добавить конкретные коммиты для игнорирования
+]

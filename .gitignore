@@ -62,3 +62,6 @@ id_*
 *.key
 *.pem
 .obsidian/
+
+# Serverless Framework
+.serverless/
