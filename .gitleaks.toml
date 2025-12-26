@@ -6,18 +6,20 @@ useDefault = true
 
 [allowlist]
 description = "Allowlist для Flow Logic проекта"
+# Пути используют regex паттерны
 paths = [
-    '''docs/''',
-    '''aws/''',
-    '''node_modules/''',
-    '''dist/''',
-    '''build/''',
-    '''\.env\.example''',
-    '''SECRET_SCANNING_FIX\.md''',
-    '''package-lock\.json''',
-    '''yarn\.lock''',
+    '''^docs/''',
+    '''^aws/''',
+    '''node_modules''',
+    '''^dist/''',
+    '''^build/''',
+    '''\.env\.example$''',
+    '''SECRET_SCANNING_FIX\.md$''',
+    '''package-lock\.json$''',
+    '''yarn\.lock$''',
     '''\.serverless/''',
-    '''AGENTS_SETUP\.md''',  # Содержит только примеры
+    '''AGENTS_SETUP\.md$''',
+    '''\.md$''',  # Все markdown файлы
 ]
 
 commits = [

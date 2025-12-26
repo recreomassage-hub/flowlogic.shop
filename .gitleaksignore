@@ -1,40 +1,26 @@
-# Игнорировать документацию и примеры
-docs/**/*
-*.md
-*.example
-.env.example
+# Игнорировать документацию
+docs/
 
-# Игнорировать тестовые файлы
-**/*test*
-**/*spec*
-**/*mock*
-
-# Игнорировать AWS SDK документацию
-aws/dist/**
-
-# Игнорировать примеры кода в документации
-**/examples/**
-**/samples/**
-
-# Игнорировать исторические файлы (если нужно)
-# SECRET_SCANNING_FIX.md
-
-# Игнорировать AWS SDK (много примеров токенов)
-aws/**
+# Игнорировать AWS SDK
+aws/
 
 # Игнорировать node_modules
-node_modules/**
+node_modules/
 
-# Игнорировать dist/build директории
-dist/**
-build/**
+# Игнорировать build артефакты
+dist/
+build/
+.serverless/
 
-# Игнорировать package-lock.json (может содержать примеры)
+# Игнорировать lock файлы
 package-lock.json
-
-# Игнорировать yarn.lock
 yarn.lock
 
-# Игнорировать исторические документы
-SECRET_SCANNING_FIX.md
-*.fix.md
+# Игнорировать примеры
+.env.example
+*.example
+*.md
+
+# Игнорировать отчеты gitleaks
+gitleaks-*.json
+*-report.json
