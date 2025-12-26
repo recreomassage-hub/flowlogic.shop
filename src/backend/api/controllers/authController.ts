@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, AuthFlowType } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient, COGNITO_CONFIG } from '../../config/cognito';
 import { UserModel, User } from '../../db/models/User';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,6 +50,15 @@ export async function register(req: Request, res: Response): Promise<void> {
     });
 
     const cognitoResponse = await cognitoClient.send(signUpCommand);
+
+    // Auto-confirm user (for dev/staging, skip email verification)
+    if (process.env.STAGE === 'dev' || process.env.STAGE === 'staging') {
+      const confirmCommand = new AdminConfirmSignUpCommand({
+        UserPoolId: COGNITO_CONFIG.userPoolId,
+        Username: email,
+      });
+      await cognitoClient.send(confirmCommand);
+    }
 
     // Create user in DynamoDB
     const userId = uuidv4();
@@ -210,4 +219,5 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
     });
   }
 }
+
 

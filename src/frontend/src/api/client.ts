@@ -1,6 +1,22 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.flowlogic.shop/v1';
+// API URL для разных окружений
+const getApiBaseUrl = () => {
+  // В production используем переменную окружения
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // В dev используем реальный endpoint
+  if (import.meta.env.DEV) {
+    return 'https://t1p7ii26f5.execute-api.us-east-1.amazonaws.com/dev';
+  }
+  
+  // Fallback для production
+  return 'https://api.flowlogic.shop';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -52,4 +68,5 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 

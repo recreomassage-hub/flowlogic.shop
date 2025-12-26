@@ -22,6 +22,22 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root endpoint
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    service: 'Flow Logic API',
+    version: '1.0.0',
+    status: 'ok',
+    endpoints: {
+      health: '/health',
+      auth: '/v1/auth',
+      users: '/v1/users',
+      subscriptions: '/v1/subscriptions',
+      assessments: '/v1/assessments',
+    },
+  });
+});
+
 // Health check
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -35,10 +51,23 @@ app.use('/v1/assessments', assessmentRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: any) => {
-  console.error('Error:', err);
+  // Структурированное логирование для CloudWatch
+  const errorLog = {
+    timestamp: new Date().toISOString(),
+    level: 'ERROR',
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    path: req.path,
+    method: req.method,
+    requestId: req.headers['x-request-id'] || 'unknown',
+  };
+  
+  console.error(JSON.stringify(errorLog));
+  
   res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred',
+    requestId: errorLog.requestId,
   });
 });
 

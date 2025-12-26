@@ -1,4 +1,4 @@
-import { docClient, TABLES, GSIS } from '../../config/database';
+import { docClient, TABLES, GSIS, QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '../../config/database';
 
 export type Tier = 'free' | 'basic' | 'pro' | 'proplus';
 
@@ -26,11 +26,11 @@ export class UserModel {
       updated_at: now,
     };
 
-    await docClient.put({
+    await docClient.send(new PutCommand({
       TableName: TABLES.USERS,
       Item: newUser,
       ConditionExpression: 'attribute_not_exists(user_id)',
-    });
+    }));
 
     return newUser;
   }
@@ -39,10 +39,10 @@ export class UserModel {
    * Get user by ID
    */
   static async getById(userId: string): Promise<User | null> {
-    const result = await docClient.get({
+    const result = await docClient.send(new GetCommand({
       TableName: TABLES.USERS,
       Key: { user_id: userId },
-    });
+    }));
 
     return (result.Item as User) || null;
   }
@@ -51,7 +51,7 @@ export class UserModel {
    * Get user by email (using GSI)
    */
   static async getByEmail(email: string): Promise<User | null> {
-    const result = await docClient.query({
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLES.USERS,
       IndexName: GSIS.USERS_EMAIL,
       KeyConditionExpression: 'email = :email',
@@ -59,7 +59,7 @@ export class UserModel {
         ':email': email,
       },
       Limit: 1,
-    });
+    }));
 
     return (result.Items?.[0] as User) || null;
   }
@@ -84,14 +84,14 @@ export class UserModel {
     expressionAttributeNames['#updated_at'] = 'updated_at';
     expressionAttributeValues[':updated_at'] = new Date().toISOString();
 
-    await docClient.update({
+    await docClient.send(new UpdateCommand({
       TableName: TABLES.USERS,
       Key: { user_id: userId },
       UpdateExpression: `SET ${updateExpression.join(', ')}`,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW',
-    });
+    }));
 
     const updated = await this.getById(userId);
     if (!updated) {
@@ -105,10 +105,11 @@ export class UserModel {
    * Delete user
    */
   static async delete(userId: string): Promise<void> {
-    await docClient.delete({
+    await docClient.send(new DeleteCommand({
       TableName: TABLES.USERS,
       Key: { user_id: userId },
-    });
+    }));
   }
 }
+
 

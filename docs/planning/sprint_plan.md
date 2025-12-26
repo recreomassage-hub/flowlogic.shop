@@ -333,3 +333,4 @@ Sprint 1 (Infrastructure)
 - **MVP+ Completion:** 24 недели (12 спринтов)
 - **Cost Target:** ≤ $50/мес для MVP
 
+

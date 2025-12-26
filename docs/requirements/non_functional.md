@@ -480,3 +480,4 @@
 - Cost: Раздел 3.3 (Cost Optimization Targets)
 - Monitoring: Раздел 11 (Monitoring & Alerting)
 
+

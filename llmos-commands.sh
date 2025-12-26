@@ -113,10 +113,26 @@ case "$1" in
         ./step.sh
         ;;
     "monitor")
-        if [ -f "./monitor.sh" ]; then
-            ./monitor.sh
+        # Определяем корень проекта (где находится monitor.sh)
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        MONITOR_SCRIPT="$SCRIPT_DIR/monitor.sh"
+        
+        if [ -f "$MONITOR_SCRIPT" ]; then
+            "$MONITOR_SCRIPT"
         else
-            echo "❌ monitor.sh не найден"
+            echo "❌ monitor.sh не найден в $SCRIPT_DIR"
+            exit 1
+        fi
+        ;;
+    "check-ssm"|"ssm")
+        # Определяем корень проекта (где находится scripts/check_ssm_params.sh)
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        SSM_SCRIPT="$SCRIPT_DIR/scripts/check_ssm_params.sh"
+        
+        if [ -f "$SSM_SCRIPT" ]; then
+            "$SSM_SCRIPT"
+        else
+            echo "❌ scripts/check_ssm_params.sh не найден в $SCRIPT_DIR"
             exit 1
         fi
         ;;
@@ -207,6 +223,7 @@ case "$1" in
         echo "  ./llmos status         - Показать статус"
         echo "  ./llmos commit|step    - Сделать коммит (атомарный)"
         echo "  ./llmos monitor        - Запустить мониторинг"
+        echo "  ./llmos check-ssm|ssm  - Проверить SSM параметры (все окружения)"
         echo "  ./llmos deploy         - Production deployment (tag + инструкции)"
         echo "  ./llmos help           - Показать эту справку"
         echo ""
@@ -216,7 +233,7 @@ case "$1" in
         echo "⚠️ SELF-REVIEW удален (0 ценность, галлюцинации агента)"
         ;;
     *)
-        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|step|monitor|deploy|help]"
+        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|step|monitor|check-ssm|ssm|deploy|help]"
         ;;
 esac
 

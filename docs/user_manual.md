@@ -430,3 +430,4 @@ A: Yes, Flow Logic uses encryption at rest and in transit. See [Security Documen
 **Last Updated:** 2025-12-22  
 **Version:** 1.0
 
+

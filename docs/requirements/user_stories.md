@@ -494,3 +494,4 @@
 - Epic 8: Раздел 3.4.4 (Retention Improvements)
 - Epic 9: Раздел 3.1 (Account lifecycle)
 
+

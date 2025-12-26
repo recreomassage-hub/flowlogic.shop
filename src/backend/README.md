@@ -89,3 +89,4 @@ STRIPE_SECRET_KEY=...
 
 Полная спецификация API: `docs/architecture/api_spec.yaml`
 
+

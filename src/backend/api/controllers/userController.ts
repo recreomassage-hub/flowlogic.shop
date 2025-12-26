@@ -71,3 +71,4 @@ export async function updateCurrentUser(req: AuthRequest, res: Response): Promis
   }
 }
 
+

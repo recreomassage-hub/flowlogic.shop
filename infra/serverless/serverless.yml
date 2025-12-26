@@ -10,9 +10,11 @@ provider:
   stage: ${opt:stage, 'dev'}
   memorySize: 512
   timeout: 30
+  logRetentionInDays: 7
+  tracing:
+    lambda: true
   environment:
     STAGE: ${self:provider.stage}
-    AWS_REGION: ${self:provider.region}
     NODE_ENV: ${self:custom.nodeEnv.${self:provider.stage}}
     COGNITO_USER_POOL_ID: ${ssm:/flowlogic/${self:provider.stage}/cognito/user-pool-id}
     COGNITO_CLIENT_ID: ${ssm:/flowlogic/${self:provider.stage}/cognito/client-id}
@@ -25,7 +27,7 @@ provider:
     DYNAMODB_USER_LIMITS_TABLE: ${self:custom.tables.userLimits}
     DYNAMODB_MIGRATIONS_TABLE: ${self:custom.tables.migrations}
     S3_BUCKET: ${self:custom.s3.bucket}
-    STRIPE_SECRET_KEY: ${ssm:/flowlogic/${self:provider.stage}/stripe/secret-key~true}
+    STRIPE_SECRET_KEY: ${ssm:/flowlogic/${self:provider.stage}/stripe/secret-key, true}
     FRONTEND_URL: ${self:custom.frontendUrl.${self:provider.stage}}
   iam:
     role:
@@ -64,6 +66,7 @@ provider:
             - cognito-idp:AdminGetUser
             - cognito-idp:AdminUpdateUserAttributes
             - cognito-idp:AdminDeleteUser
+            - cognito-idp:AdminConfirmSignUp
             - cognito-idp:ListUsers
           Resource:
             - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${ssm:/flowlogic/${self:provider.stage}/cognito/user-pool-id}
@@ -97,7 +100,7 @@ custom:
 
 functions:
   api:
-    handler: dist/index.handler
+    handler: src/backend/dist/index.handler
     events:
       - http:
           path: /{proxy+}
@@ -254,5 +257,15 @@ resources:
 
 plugins:
   - serverless-offline
-  - serverless-plugin-typescript
+
+package:
+  patterns:
+    - '!../../src/backend/**/*.test.ts'
+    - '!../../src/backend/**/*.ts'
+    - '!../../src/backend/tsconfig.json'
+    - '../../src/backend/dist/**'
+    - '../../src/backend/node_modules/**'
+    - '!../../src/backend/node_modules/.cache/**'
+    - '!../../src/backend/node_modules/**/*.md'
+    - '!../../src/backend/node_modules/**/*.txt'
 
