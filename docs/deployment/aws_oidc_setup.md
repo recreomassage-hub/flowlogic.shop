@@ -44,6 +44,10 @@
 ### Шаг 3: Настройка Trust Policy (важно!)
 
 1. В разделе **Role name** введите: `flowlogic-github-actions-role`
+2. В разделе **Description** введите:
+   ```
+   IAM Role for GitHub Actions to deploy Flow Logic backend via OIDC. Allows CI/CD pipeline to deploy Lambda functions, API Gateway, DynamoDB tables, S3 buckets, and read SSM parameters.
+   ```
 2. В разделе **Trust policy** замените JSON на:
 
 ```json
