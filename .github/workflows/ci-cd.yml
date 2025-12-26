@@ -43,52 +43,72 @@ jobs:
           ls -la src/frontend/ 2>/dev/null | head -5 || echo "⚠️  src/frontend/ not found"
       
       - name: Install dependencies (Backend)
-        if: hashFiles('src/backend/package.json') != ''
         run: |
           if [ -f "src/backend/package.json" ]; then
+            echo "📦 Installing backend dependencies..."
             cd src/backend
             if [ -f "package-lock.json" ]; then
-              npm ci
+              npm ci || {
+                echo "⚠️  npm ci failed, trying npm install..."
+                npm install
+              }
             else
               echo "⚠️  package-lock.json not found, using npm install"
               npm install
             fi
+            echo "✅ Backend dependencies installed"
           else
             echo "⚠️  Backend package.json not found, skipping..."
           fi
-        continue-on-error: true
       
       - name: Install dependencies (Frontend)
-        if: hashFiles('src/frontend/package.json') != ''
         run: |
           if [ -f "src/frontend/package.json" ]; then
+            echo "📦 Installing frontend dependencies..."
             cd src/frontend
             if [ -f "package-lock.json" ]; then
-              npm ci
+              npm ci || {
+                echo "⚠️  npm ci failed, trying npm install..."
+                npm install
+              }
             else
               echo "⚠️  package-lock.json not found, using npm install"
               npm install
             fi
+            echo "✅ Frontend dependencies installed"
           else
             echo "⚠️  Frontend package.json not found, skipping..."
           fi
-        continue-on-error: true
       
       - name: Build Backend
-        if: hashFiles('src/backend/package.json') != ''
         run: |
-          cd src/backend
-          npm run build
-        continue-on-error: true
+          if [ -f "src/backend/package.json" ] && [ -f "src/backend/tsconfig.json" ]; then
+            echo "📦 Building backend..."
+            cd src/backend
+            npm run build || {
+              echo "❌ Backend build failed"
+              exit 1
+            }
+            echo "✅ Backend build successful"
+          else
+            echo "⚠️  Backend not found or not configured, skipping build..."
+          fi
       
       - name: Build Frontend
-        if: hashFiles('src/frontend/package.json') != ''
         run: |
-          cd src/frontend
-          npm run build
+          if [ -f "src/frontend/package.json" ]; then
+            echo "📦 Building frontend..."
+            cd src/frontend
+            npm run build || {
+              echo "❌ Frontend build failed"
+              exit 1
+            }
+            echo "✅ Frontend build successful"
+          else
+            echo "⚠️  Frontend not found or not configured, skipping build..."
+          fi
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://api.flowlogic.shop' }}
-        continue-on-error: true
       
       - name: Run tests
         if: hashFiles('src/backend/package.json') != ''
