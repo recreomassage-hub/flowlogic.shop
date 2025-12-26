@@ -183,54 +183,48 @@ jobs:
           node-version: '20'
       
       - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Используем OIDC (рекомендуется) или Access Keys (fallback)
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+        # Если используется OIDC, нужны permissions для получения токена
+        permissions:
+          id-token: write
+          contents: read
+      
+      - name: Verify AWS credentials
         run: |
-          echo "🔐 Configuring AWS credentials..."
-          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+          echo "🔍 Verifying AWS credentials..."
+          aws sts get-caller-identity || {
             echo ""
-            echo "❌ AWS credentials not found in GitHub Secrets!"
+            echo "❌ Failed to authenticate with AWS!"
             echo ""
-            echo "📋 ЧТО НУЖНО СДЕЛАТЬ:"
+            echo "📋 ВОЗМОЖНЫЕ РЕШЕНИЯ:"
             echo ""
-            echo "1. Создайте IAM User в AWS Console с правами на:"
-            echo "   - Lambda, API Gateway, DynamoDB, S3, SSM, Cognito, CloudFormation"
+            echo "ВАРИАНТ 1: Использовать OIDC (рекомендуется):"
+            echo "   1. Создайте IAM Role с OIDC provider"
+            echo "   2. Добавьте в GitHub Secrets:"
+            echo "      - AWS_ROLE_ARN (ARN вашей роли)"
+            echo "   📚 Инструкция: docs/deployment/aws_oidc_setup.md"
             echo ""
-            echo "2. Создайте Access Key для этого пользователя"
+            echo "ВАРИАНТ 2: Использовать Access Keys:"
+            echo "   1. Создайте IAM User с правами на:"
+            echo "      - Lambda, API Gateway, DynamoDB, S3, SSM, Cognito, CloudFormation"
+            echo "   2. Добавьте в GitHub Secrets:"
+            echo "      - AWS_ACCESS_KEY_ID"
+            echo "      - AWS_SECRET_ACCESS_KEY"
+            echo "   📚 Инструкция: docs/deployment/aws_credentials_setup.md"
             echo ""
-            echo "3. Добавьте secrets в GitHub:"
+            echo "🔗 Настройка Secrets:"
             echo "   https://github.com/recreomassage-hub/flowlogic.shop/settings/secrets/actions"
             echo ""
-            echo "   Secrets для добавления:"
-            echo "   - AWS_ACCESS_KEY_ID (ваш Access Key ID)"
-            echo "   - AWS_SECRET_ACCESS_KEY (ваш Secret Access Key)"
-            echo ""
-            echo "📚 Подробная инструкция:"
-            echo "   docs/deployment/aws_credentials_setup.md"
-            echo ""
-            exit 1
-          fi
-          echo "✅ AWS credentials found in secrets"
-          echo "AWS Region: ${AWS_REGION:-us-east-1}"
-          
-          # Установка AWS CLI для проверки credentials
-          echo "📦 Installing AWS CLI..."
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          sudo ./aws/install
-          aws --version
-          
-          # Проверка подключения к AWS
-          echo "🔍 Testing AWS connection..."
-          aws sts get-caller-identity || {
-            echo "❌ Failed to authenticate with AWS"
-            echo "Please check that AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correct"
             exit 1
           }
           echo "✅ AWS authentication successful"
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
-          AWS_REGION: us-east-1
+          aws sts get-caller-identity
       
       - name: Deploy Backend (Serverless)
         run: |
