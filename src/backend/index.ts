@@ -50,7 +50,7 @@ app.use('/v1/subscriptions', subscriptionRoutes);
 app.use('/v1/assessments', assessmentRoutes);
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: any) => {
+app.use((err: Error, req: Request, res: Response, _next: any) => {
   // Структурированное логирование для CloudWatch
   const errorLog = {
     timestamp: new Date().toISOString(),
@@ -72,7 +72,7 @@ app.use((err: Error, req: Request, res: Response, next: any) => {
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found', message: 'Route not found' });
 });
 

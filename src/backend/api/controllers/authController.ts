@@ -184,7 +184,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 /**
  * Logout user
  */
-export async function logout(req: Request, res: Response): Promise<void> {
+export async function logout(_req: Request, res: Response): Promise<void> {
   // Clear refresh token cookie
   res.clearCookie('refreshToken');
   res.status(200).json({ message: 'Logged out successfully' });
