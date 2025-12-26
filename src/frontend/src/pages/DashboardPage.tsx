@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { usersApi } from '../api/users';
-import { assessmentsApi } from '../api/assessments';
 
 export function DashboardPage() {
   const { user, setUser } = useAuthStore();
