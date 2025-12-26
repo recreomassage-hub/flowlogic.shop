@@ -188,13 +188,24 @@ jobs:
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
             echo "❌ AWS credentials not found in secrets!"
             echo "Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets"
+            echo "Go to: https://github.com/recreomassage-hub/flowlogic.shop/settings/secrets/actions"
             exit 1
           fi
-          echo "✅ AWS credentials configured"
+          echo "✅ AWS credentials found in secrets"
           echo "AWS Region: ${AWS_REGION:-us-east-1}"
+          
+          # Установка AWS CLI для проверки credentials
+          echo "📦 Installing AWS CLI..."
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -q awscliv2.zip
+          sudo ./aws/install
+          aws --version
+          
           # Проверка подключения к AWS
+          echo "🔍 Testing AWS connection..."
           aws sts get-caller-identity || {
             echo "❌ Failed to authenticate with AWS"
+            echo "Please check that AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correct"
             exit 1
           }
           echo "✅ AWS authentication successful"
