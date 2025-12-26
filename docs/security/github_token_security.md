@@ -5,7 +5,7 @@
 GitHub Personal Access Token был найден в коммите и отозван GitHub.
 
 **Дата обнаружения:** 2025-12-26  
-**Токен:** `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` (отозван)
+**Токен:** `ghp_REVOKED_TOKEN_EXAMPLE` (отозван, пример)
 
 ---
 
@@ -71,7 +71,7 @@ echo "GITHUB_TOKEN=ghp_ваш_новый_токен" >> .env
 # https://rtyley.github.io/bfg-repo-cleaner/
 
 # Создать файл с токенами для замены
-echo "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==>ghp_REVOKED_TOKEN" > tokens.txt
+echo "ghp_REVOKED_TOKEN_EXAMPLE==>ghp_REVOKED_TOKEN" > tokens.txt
 
 # Очистить историю
 bfg --replace-text tokens.txt
@@ -91,7 +91,7 @@ git push --force
 pip install git-filter-repo
 
 # Заменить токен в истории
-git filter-repo --replace-text <(echo "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==>ghp_REVOKED_TOKEN")
+git filter-repo --replace-text <(echo "ghp_REVOKED_TOKEN_EXAMPLE==>ghp_REVOKED_TOKEN")
 
 # Force push
 git push --force
@@ -118,7 +118,7 @@ git push --force
 
 ### Проверить, что токен не в файлах:
 ```bash
-grep -r "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" . --exclude-dir=node_modules --exclude-dir=.git
+grep -r "ghp_REVOKED_TOKEN_EXAMPLE" . --exclude-dir=node_modules --exclude-dir=.git
 ```
 
 ### Проверить, что .env в .gitignore:
