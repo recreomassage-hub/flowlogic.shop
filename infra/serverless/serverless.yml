@@ -1,6 +1,6 @@
 service: flowlogic-backend
 
-frameworkVersion: '3'
+# frameworkVersion: '3'  # Serverless Framework v3 не существует, используем последнюю версию v2
 
 provider:
   name: aws
