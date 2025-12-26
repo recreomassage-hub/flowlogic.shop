@@ -65,3 +65,5 @@ id_*
 
 # Serverless Framework
 .serverless/
+gitleaks-*.json
+*-analysis.json
