@@ -40,10 +40,7 @@
         "dynamodb:DescribeTable",
         "dynamodb:ListTables",
         "dynamodb:TagResource",
-        "dynamodb:UntagResource",
-        "dynamodb:CreateGlobalSecondaryIndex",
-        "dynamodb:UpdateGlobalSecondaryIndex",
-        "dynamodb:DeleteGlobalSecondaryIndex"
+        "dynamodb:UntagResource"
       ],
       "Resource": [
         "arn:aws:dynamodb:*:*:table/flowlogic-*"
@@ -59,10 +56,10 @@
         "s3:ListBucket",
         "s3:GetBucketVersioning",
         "s3:PutBucketVersioning",
-        "s3:GetBucketLifecycleConfiguration",
-        "s3:PutBucketLifecycleConfiguration",
-        "s3:GetBucketEncryption",
-        "s3:PutBucketEncryption",
+        "s3:GetLifecycleConfiguration",
+        "s3:PutLifecycleConfiguration",
+        "s3:GetEncryptionConfiguration",
+        "s3:PutEncryptionConfiguration",
         "s3:GetBucketPublicAccessBlock",
         "s3:PutBucketPublicAccessBlock",
         "s3:PutBucketTagging",
