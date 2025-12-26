@@ -94,3 +94,4 @@ aws iam get-policy-version \
 4. ➡️ Проверьте workflow в GitHub Actions
 
 
+

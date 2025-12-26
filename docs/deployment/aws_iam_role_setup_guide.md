@@ -155,3 +155,4 @@ aws iam list-attached-role-policies --role-name flowlogic-github-actions-role
    - Не нужно хранить Access Keys
 
 
+

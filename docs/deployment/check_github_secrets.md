@@ -16,10 +16,10 @@
 
 ### Требуемые секреты для Access Keys:
 
-| Имя секрета | Значение | Пример |
+| Имя секрета | Значение | Формат |
 |------------|----------|--------|
-| `AWS_ACCESS_KEY_ID` | Ваш Access Key ID | `AKIAIOSFODNN7EXAMPLE` |
-| `AWS_SECRET_ACCESS_KEY` | Ваш Secret Access Key | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+| `AWS_ACCESS_KEY_ID` | Ваш Access Key ID | Начинается с `AKIA`, 20 символов |
+| `AWS_SECRET_ACCESS_KEY` | Ваш Secret Access Key | 40 символов, буквы/цифры/символы |
 
 ### ⚠️ ВАЖНО:
 
@@ -34,7 +34,7 @@
 ### AWS_ACCESS_KEY_ID:
 - ✅ Должен начинаться с `AKIA`
 - ✅ Длина: 20 символов
-- ✅ Пример: `AKIAIOSFODNN7EXAMPLE`
+- ✅ Формат: `AKIA` + 16 символов (буквы и цифры)
 
 ### AWS_SECRET_ACCESS_KEY:
 - ✅ Длина: 40 символов

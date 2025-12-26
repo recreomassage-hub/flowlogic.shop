@@ -46,8 +46,8 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 4. Выберите **Application running outside AWS**
 5. Нажмите **Next** → **Create access key**
 6. **ВАЖНО**: Сохраните:
-   - **Access key ID** (например: `AKIAIOSFODNN7EXAMPLE`)
-   - **Secret access key** (например: `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`)
+   - **Access key ID** (начинается с `AKIA`, 20 символов)
+   - **Secret access key** (40 символов, показывается только один раз!)
 
    ⚠️ **Secret access key показывается только один раз!** Если потеряете, нужно создать новый ключ.
 
@@ -156,5 +156,6 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [AWS IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
 - [Serverless Framework AWS Credentials](https://www.serverless.com/framework/docs/providers/aws/guide/credentials)
+
 
 

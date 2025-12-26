@@ -213,12 +213,25 @@ jobs:
             echo "USE_OIDC=false" >> $GITHUB_OUTPUT
           fi
           
-          # Проверка Access Keys
-          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-            echo "✅ AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY found"
+          # Проверка Access Keys (для production используем _PROD суффикс)
+          AWS_ACCESS_KEY_ID_VAL="${{ secrets.AWS_ACCESS_KEY_ID_PROD }}"
+          AWS_SECRET_ACCESS_KEY_VAL="${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}"
+          
+          # Fallback на общие имена (для обратной совместимости)
+          if [ -z "$AWS_ACCESS_KEY_ID_VAL" ]; then
+            AWS_ACCESS_KEY_ID_VAL="${{ secrets.AWS_ACCESS_KEY_ID }}"
+          fi
+          if [ -z "$AWS_SECRET_ACCESS_KEY_VAL" ]; then
+            AWS_SECRET_ACCESS_KEY_VAL="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          fi
+          
+          if [ -n "$AWS_ACCESS_KEY_ID_VAL" ] && [ -n "$AWS_SECRET_ACCESS_KEY_VAL" ]; then
+            echo "✅ AWS Access Keys found (using AWS_ACCESS_KEY_ID_PROD or AWS_ACCESS_KEY_ID)"
             echo "HAS_ACCESS_KEYS=true" >> $GITHUB_OUTPUT
           else
             echo "⚠️  AWS Access Keys not found"
+            echo "   Проверьте наличие AWS_ACCESS_KEY_ID_PROD или AWS_ACCESS_KEY_ID"
+            echo "   Проверьте наличие AWS_SECRET_ACCESS_KEY_PROD или AWS_SECRET_ACCESS_KEY"
             echo "HAS_ACCESS_KEYS=false" >> $GITHUB_OUTPUT
           fi
           
@@ -230,16 +243,19 @@ jobs:
             USE_OIDC_VAL="true"
           fi
           
-          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+          # Используем те же переменные, что и выше
+          if [ -n "$AWS_ACCESS_KEY_ID_VAL" ] && [ -n "$AWS_SECRET_ACCESS_KEY_VAL" ]; then
             HAS_ACCESS_KEYS_VAL="true"
           fi
           
           if [ "$USE_OIDC_VAL" != "true" ] && [ "$HAS_ACCESS_KEYS_VAL" != "true" ]; then
-            echo "❌ ERROR: Neither valid AWS_ROLE_ARN nor AWS_ACCESS_KEY_ID is configured!"
+            echo "❌ ERROR: Neither valid AWS_ROLE_ARN nor AWS Access Keys are configured!"
             echo ""
             echo "Please configure one of the following:"
             echo "1. AWS_ROLE_ARN (for OIDC) - format: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
-            echo "2. AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (for Access Keys)"
+            echo "   Current value appears to be empty or invalid"
+            echo "2. AWS_ACCESS_KEY_ID_PROD + AWS_SECRET_ACCESS_KEY_PROD (for Access Keys - RECOMMENDED)"
+            echo "   OR AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (fallback)"
             echo ""
             echo "See: docs/deployment/aws_oidc_setup.md or docs/deployment/aws_credentials_setup.md"
             echo ""
@@ -266,8 +282,8 @@ jobs:
         if: steps.check-aws-creds.outputs.USE_OIDC != 'true' && steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
         id: aws-config-keys
       
@@ -305,8 +321,8 @@ jobs:
               echo "🔍 Access Keys Configuration Issue:"
               echo ""
               echo "📋 ПРОВЕРЬТЕ:"
-              echo "   1. AWS_ACCESS_KEY_ID добавлен в GitHub Secrets"
-              echo "   2. AWS_SECRET_ACCESS_KEY добавлен в GitHub Secrets"
+              echo "   1. AWS_ACCESS_KEY_ID_PROD добавлен в GitHub Secrets (или AWS_ACCESS_KEY_ID)"
+              echo "   2. AWS_SECRET_ACCESS_KEY_PROD добавлен в GitHub Secrets (или AWS_SECRET_ACCESS_KEY)"
               echo "   3. Access Keys активны в AWS"
               echo ""
               echo "📚 Инструкция: docs/deployment/aws_credentials_setup.md"
@@ -351,8 +367,8 @@ jobs:
             echo "⚠️  infra/serverless directory not found, skipping deployment"
           fi
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
           AWS_REGION: us-east-1
       

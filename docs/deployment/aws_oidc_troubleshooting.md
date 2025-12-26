@@ -225,3 +225,4 @@ Workflow автоматически использует Access Keys, если `
 - [Troubleshooting OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/troubleshooting-openid-connect)
 
 
+
