@@ -186,6 +186,48 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Check AWS credentials configuration
+        run: |
+          echo "🔍 Checking AWS credentials configuration..."
+          if [ -n "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            echo "✅ AWS_ROLE_ARN found"
+            echo "ARN format check:"
+            if [[ "${{ secrets.AWS_ROLE_ARN }}" =~ ^arn:aws:iam::[0-9]{12}:role/[a-zA-Z0-9+=,.@_-]+$ ]]; then
+              echo "✅ ARN format is valid"
+              echo "ARN: ${{ secrets.AWS_ROLE_ARN }}"
+            else
+              echo "❌ ARN format is INVALID!"
+              echo "Expected format: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
+              echo "Current value: ${{ secrets.AWS_ROLE_ARN }}"
+              echo ""
+              echo "Please check:"
+              echo "1. ARN starts with 'arn:aws:iam::'"
+              echo "2. Account ID is 12 digits"
+              echo "3. Role name follows 'role/'"
+              echo "4. No spaces or special characters"
+              exit 1
+            fi
+          else
+            echo "⚠️  AWS_ROLE_ARN not found, will use Access Keys"
+          fi
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "✅ AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY found"
+          else
+            echo "⚠️  AWS Access Keys not found"
+          fi
+          
+          if [ -z "${{ secrets.AWS_ROLE_ARN }}" ] && [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo "❌ ERROR: Neither AWS_ROLE_ARN nor AWS_ACCESS_KEY_ID is configured!"
+            echo ""
+            echo "Please configure one of the following:"
+            echo "1. AWS_ROLE_ARN (for OIDC) - recommended"
+            echo "2. AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (for Access Keys)"
+            echo ""
+            echo "See: docs/deployment/aws_oidc_setup.md or docs/deployment/aws_credentials_setup.md"
+            exit 1
+          fi
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -194,37 +236,60 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_ACCESS_KEY_ID || '' }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY != '' && secrets.AWS_SECRET_ACCESS_KEY || '' }}
           aws-region: us-east-1
+        continue-on-error: true
+        id: aws-config
       
       - name: Verify AWS credentials
+        if: steps.aws-config.outcome == 'success'
         run: |
           echo "🔍 Verifying AWS credentials..."
           aws sts get-caller-identity || {
             echo ""
             echo "❌ Failed to authenticate with AWS!"
-            echo ""
-            echo "📋 ВОЗМОЖНЫЕ РЕШЕНИЯ:"
-            echo ""
-            echo "ВАРИАНТ 1: Использовать OIDC (рекомендуется):"
-            echo "   1. Создайте IAM Role с OIDC provider"
-            echo "   2. Добавьте в GitHub Secrets:"
-            echo "      - AWS_ROLE_ARN (ARN вашей роли)"
-            echo "   📚 Инструкция: docs/deployment/aws_oidc_setup.md"
-            echo ""
-            echo "ВАРИАНТ 2: Использовать Access Keys:"
-            echo "   1. Создайте IAM User с правами на:"
-            echo "      - Lambda, API Gateway, DynamoDB, S3, SSM, Cognito, CloudFormation"
-            echo "   2. Добавьте в GitHub Secrets:"
-            echo "      - AWS_ACCESS_KEY_ID"
-            echo "      - AWS_SECRET_ACCESS_KEY"
-            echo "   📚 Инструкция: docs/deployment/aws_credentials_setup.md"
-            echo ""
-            echo "🔗 Настройка Secrets:"
-            echo "   https://github.com/recreomassage-hub/flowlogic.shop/settings/secrets/actions"
-            echo ""
             exit 1
           }
           echo "✅ AWS authentication successful"
           aws sts get-caller-identity
+      
+      - name: Handle AWS credentials error
+        if: steps.aws-config.outcome == 'failure'
+        run: |
+          echo ""
+          echo "❌ Failed to configure AWS credentials!"
+          echo ""
+          if [ -n "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            echo "🔍 OIDC Configuration Issue:"
+            echo "   ARN: ${{ secrets.AWS_ROLE_ARN }}"
+            echo ""
+            echo "📋 ПРОВЕРЬТЕ:"
+            echo "   1. ARN формат правильный: arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
+            echo "   2. Роль существует в AWS:"
+            echo "      aws iam get-role --role-name flowlogic-github-actions-role"
+            echo "   3. OIDC Provider создан:"
+            echo "      aws iam list-open-id-connect-providers"
+            echo "   4. Trust Policy настроен для OIDC"
+            echo ""
+            echo "📚 Troubleshooting: docs/deployment/aws_oidc_troubleshooting.md"
+            echo ""
+            echo "💡 ВРЕМЕННОЕ РЕШЕНИЕ: Используйте Access Keys"
+            echo "   1. Добавьте AWS_ACCESS_KEY_ID и AWS_SECRET_ACCESS_KEY"
+            echo "   2. Удалите или оставьте пустым AWS_ROLE_ARN"
+            echo "   3. Workflow автоматически использует Access Keys"
+          else
+            echo "🔍 Access Keys Configuration Issue:"
+            echo ""
+            echo "📋 ПРОВЕРЬТЕ:"
+            echo "   1. AWS_ACCESS_KEY_ID добавлен в GitHub Secrets"
+            echo "   2. AWS_SECRET_ACCESS_KEY добавлен в GitHub Secrets"
+            echo "   3. Access Keys активны в AWS"
+            echo ""
+            echo "📚 Инструкция: docs/deployment/aws_credentials_setup.md"
+          fi
+          echo ""
+          echo "🔗 Настройка Secrets:"
+          echo "   https://github.com/recreomassage-hub/flowlogic.shop/settings/secrets/actions"
+          echo ""
+          exit 1
       
       - name: Deploy Backend (Serverless)
         run: |
