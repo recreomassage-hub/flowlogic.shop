@@ -108,7 +108,7 @@ functions:
           path: /{proxy+}
           method: ANY
           cors:
-            origin: ${self:custom.frontendUrl.${self:provider.stage}}
+            origin: ${self:custom.frontendUrl.${self:provider.stage}, self:custom.frontendUrl.prod}
             headers:
               - Content-Type
               - Authorization
@@ -117,7 +117,7 @@ functions:
           path: /
           method: ANY
           cors:
-            origin: ${self:custom.frontendUrl.${self:provider.stage}}
+            origin: ${self:custom.frontendUrl.${self:provider.stage}, self:custom.frontendUrl.prod}
             headers:
               - Content-Type
               - Authorization
