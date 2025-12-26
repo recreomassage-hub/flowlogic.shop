@@ -1,0 +1,164 @@
+# Тестовый workflow для проверки GitHub Token
+# Запускается вручную через workflow_dispatch
+
+name: Test GitHub Token
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Тип теста'
+        required: true
+        default: 'api'
+        type: choice
+        options:
+          - api
+          - python
+          - nodejs
+
+jobs:
+  test-token:
+    name: Test GitHub Token
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Test API Connection
+        if: github.event.inputs.test_type == 'api' || github.event.inputs.test_type == ''
+        env:
+          # Поддержка обоих вариантов имени секрета
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Testing GitHub Token..."
+          
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "❌ ERROR: GITHUB_TOKEN not set!"
+            echo "   Проверьте, что секрет добавлен в:"
+            echo "   https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          
+          echo "✅ Token found (format: ${GITHUB_TOKEN:0:7}...${GITHUB_TOKEN: -4})"
+          
+          # Проверка формата
+          if [[ ! "$GITHUB_TOKEN" =~ ^ghp_ ]]; then
+            echo "⚠️  WARNING: Token format incorrect (should start with 'ghp_')"
+          else
+            echo "✅ Token format correct"
+          fi
+          
+          # Тест API подключения
+          echo ""
+          echo "🌐 Testing GitHub API connection..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: token $GITHUB_TOKEN" \
+                          -H "Accept: application/vnd.github.v3+json" \
+                          https://api.github.com/user)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            USER=$(echo "$BODY" | grep -o '"login":"[^"]*"' | cut -d'"' -f4)
+            echo "✅ API connection successful!"
+            echo "   User: $USER"
+            echo "   HTTP Status: $HTTP_CODE"
+          elif [ "$HTTP_CODE" = "401" ]; then
+            echo "❌ ERROR: Unauthorized (401)"
+            echo "   Token is invalid or expired"
+            exit 1
+          else
+            echo "⚠️  WARNING: Unexpected response"
+            echo "   HTTP Status: $HTTP_CODE"
+            echo "   Response: $BODY"
+          fi
+      
+      - name: Test Python (PyGithub)
+        if: github.event.inputs.test_type == 'python'
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: recreomassage-hub/flowlogic.shop
+        run: |
+          echo "🐍 Testing Python (PyGithub)..."
+          
+          python3 << 'EOF'
+          import os
+          import sys
+          
+          try:
+              from github import Github
+          except ImportError:
+              print("❌ PyGithub not installed")
+              print("   Installing...")
+              import subprocess
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "PyGithub"])
+              from github import Github
+          
+          token = os.getenv('GITHUB_TOKEN')
+          if not token:
+              print("❌ GITHUB_TOKEN not set")
+              sys.exit(1)
+          
+          try:
+              g = Github(token)
+              user = g.get_user()
+              print(f"✅ Connected to GitHub as: {user.login}")
+              
+              repo_name = os.getenv('GITHUB_REPO', 'recreomassage-hub/flowlogic.shop')
+              repo = g.get_repo(repo_name)
+              print(f"✅ Repository: {repo.full_name}")
+              print(f"   Description: {repo.description or 'N/A'}")
+              print(f"   Status: {'Private' if repo.private else 'Public'}")
+              
+              # Получение последних коммитов
+              commits = list(repo.get_commits()[:3])
+              print(f"\n📝 Last 3 commits:")
+              for commit in commits:
+                  msg = commit.commit.message.split('\n')[0]
+                  print(f"   - {commit.sha[:7]}: {msg}")
+              
+          except Exception as e:
+              print(f"❌ Error: {e}")
+              sys.exit(1)
+          EOF
+      
+      - name: Test Node.js (Octokit)
+        if: github.event.inputs.test_type == 'nodejs'
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          echo "📦 Testing Node.js (Octokit)..."
+          
+          node << 'EOF'
+          const { Octokit } = require('@octokit/rest');
+          
+          const token = process.env.GITHUB_TOKEN;
+          if (!token) {
+              console.error('❌ GITHUB_TOKEN not set');
+              process.exit(1);
+          }
+          
+          const octokit = new Octokit({ auth: token });
+          
+          octokit.rest.users.getAuthenticated()
+              .then(({ data }) => {
+                  console.log(`✅ Connected to GitHub as: ${data.login}`);
+                  return octokit.rest.repos.get({
+                      owner: 'recreomassage-hub',
+                      repo: 'flowlogic.shop'
+                  });
+              })
+              .then(({ data }) => {
+                  console.log(`✅ Repository: ${data.full_name}`);
+                  console.log(`   Description: ${data.description || 'N/A'}`);
+                  console.log(`   Status: ${data.private ? 'Private' : 'Public'}`);
+              })
+              .catch(err => {
+                  console.error(`❌ Error: ${err.message}`);
+                  process.exit(1);
+              });
+          EOF
+
