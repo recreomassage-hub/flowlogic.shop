@@ -81,7 +81,8 @@ custom:
   nodeEnv:
     dev: development
     staging: staging
-    prod: production
+    production: production
+    prod: production  # Alias for production
   tables:
     users: flowlogic-${self:provider.stage}-users
     subscriptions: flowlogic-${self:provider.stage}-subscriptions
@@ -96,7 +97,8 @@ custom:
   frontendUrl:
     dev: http://localhost:3000
     staging: https://staging.flowlogic.shop
-    prod: https://flowlogic.shop
+    production: https://flowlogic.shop
+    prod: https://flowlogic.shop  # Alias for production
 
 functions:
   api:
