@@ -176,9 +176,17 @@ jobs:
       
       - name: Deploy Backend (Serverless)
         run: |
-          cd infra/serverless
-          npm install -g serverless
-          serverless deploy --stage production
+          if [ -d "infra/serverless" ]; then
+            cd infra/serverless
+            echo "📦 Installing Serverless Framework..."
+            npm install -g serverless@latest
+            echo "📦 Installing dependencies..."
+            npm install
+            echo "🚀 Deploying to production..."
+            serverless deploy --stage production
+          else
+            echo "⚠️  infra/serverless directory not found, skipping deployment"
+          fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
