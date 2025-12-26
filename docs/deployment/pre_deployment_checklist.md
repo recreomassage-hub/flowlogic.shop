@@ -220,3 +220,4 @@ curl -X POST https://YOUR_API_GATEWAY_URL/production/v1/auth/register \
 
 **Следующий шаг:** `git push origin main` и мониторинг workflow в GitHub Actions.
 
+

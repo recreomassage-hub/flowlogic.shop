@@ -222,8 +222,19 @@ jobs:
             echo "HAS_ACCESS_KEYS=false" >> $GITHUB_OUTPUT
           fi
           
-          # Финальная проверка
-          if [ "${{ steps.check-aws-creds.outputs.USE_OIDC }}" != "true" ] && [ "${{ steps.check-aws-creds.outputs.HAS_ACCESS_KEYS }}" != "true" ]; then
+          # Финальная проверка (используем переменные вместо outputs для проверки в том же шаге)
+          USE_OIDC_VAL="false"
+          HAS_ACCESS_KEYS_VAL="false"
+          
+          if [ -n "$AWS_ROLE_ARN" ] && [[ "$AWS_ROLE_ARN" =~ ^arn:aws:iam::[0-9]{12}:role/[a-zA-Z0-9+=,.@_-]+$ ]]; then
+            USE_OIDC_VAL="true"
+          fi
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            HAS_ACCESS_KEYS_VAL="true"
+          fi
+          
+          if [ "$USE_OIDC_VAL" != "true" ] && [ "$HAS_ACCESS_KEYS_VAL" != "true" ]; then
             echo "❌ ERROR: Neither valid AWS_ROLE_ARN nor AWS_ACCESS_KEY_ID is configured!"
             echo ""
             echo "Please configure one of the following:"
@@ -231,8 +242,16 @@ jobs:
             echo "2. AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (for Access Keys)"
             echo ""
             echo "See: docs/deployment/aws_oidc_setup.md or docs/deployment/aws_credentials_setup.md"
+            echo ""
+            echo "📋 Проверка секретов:"
+            echo "   https://github.com/recreomassage-hub/flowlogic.shop/settings/secrets/actions"
             exit 1
           fi
+          
+          echo ""
+          echo "📊 Configuration summary:"
+          echo "   USE_OIDC: $USE_OIDC_VAL"
+          echo "   HAS_ACCESS_KEYS: $HAS_ACCESS_KEYS_VAL"
       
       - name: Configure AWS credentials (OIDC)
         if: steps.check-aws-creds.outputs.USE_OIDC == 'true'

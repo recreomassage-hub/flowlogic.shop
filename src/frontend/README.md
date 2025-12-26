@@ -63,3 +63,4 @@ API requests are proxied to `http://localhost:3001` in development (see `vite.co
 The frontend is deployed to Vercel. Push to `main` branch triggers automatic deployment.
 
 
+

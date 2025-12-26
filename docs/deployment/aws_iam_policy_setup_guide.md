@@ -93,3 +93,4 @@ aws iam get-policy-version \
 3. ➡️ Добавьте `AWS_ROLE_ARN` в GitHub Secrets
 4. ➡️ Проверьте workflow в GitHub Actions
 
+

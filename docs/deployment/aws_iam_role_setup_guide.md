@@ -154,3 +154,4 @@ aws iam list-attached-role-policies --role-name flowlogic-github-actions-role
    - Credentials генерируются автоматически и временные
    - Не нужно хранить Access Keys
 
+

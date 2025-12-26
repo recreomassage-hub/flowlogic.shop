@@ -586,3 +586,4 @@ aws cloudtrail create-trail \
 **Версия:** 1.0
 
 
+

@@ -224,3 +224,4 @@ Workflow автоматически использует Access Keys, если `
 - [AWS IAM OIDC Identity Providers](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html)
 - [Troubleshooting OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/troubleshooting-openid-connect)
 
+

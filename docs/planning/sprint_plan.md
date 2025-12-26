@@ -334,3 +334,4 @@ Sprint 1 (Infrastructure)
 - **Cost Target:** ≤ $50/мес для MVP
 
 
+

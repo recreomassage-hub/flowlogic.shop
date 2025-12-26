@@ -157,3 +157,4 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 - [AWS IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
 - [Serverless Framework AWS Credentials](https://www.serverless.com/framework/docs/providers/aws/guide/credentials)
 
+
