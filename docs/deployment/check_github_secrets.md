@@ -18,7 +18,7 @@
 
 | Имя секрета | Значение | Пример |
 |------------|----------|--------|
-| `AWS_ACCESS_KEY_ID` | Ваш Access Key ID | `AKIAVEXAH5QOTGQYHS5U` |
+| `AWS_ACCESS_KEY_ID` | Ваш Access Key ID | `AKIAIOSFODNN7EXAMPLE` |
 | `AWS_SECRET_ACCESS_KEY` | Ваш Secret Access Key | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 
 ### ⚠️ ВАЖНО:
@@ -34,7 +34,7 @@
 ### AWS_ACCESS_KEY_ID:
 - ✅ Должен начинаться с `AKIA`
 - ✅ Длина: 20 символов
-- ✅ Пример: `AKIAVEXAH5QOTGQYHS5U`
+- ✅ Пример: `AKIAIOSFODNN7EXAMPLE`
 
 ### AWS_SECRET_ACCESS_KEY:
 - ✅ Длина: 40 символов
@@ -110,7 +110,7 @@
 2. **New repository secret**
 3. Добавьте:
    - Name: `AWS_ACCESS_KEY_ID`
-   - Value: `AKIAVEXAH5QOTGQYHS5U` (ваш ключ)
+   - Value: ваш Access Key ID из AWS (начинается с `AKIA`)
 4. **Add secret**
 5. Повторите для `AWS_SECRET_ACCESS_KEY`
 

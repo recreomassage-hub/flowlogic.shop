@@ -53,7 +53,7 @@ arn:aws:iam::123456789012:role/GitHubActionsRole
 arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME
 
 # Пример:
-arn:aws:iam::353731341341:role/flowlogic-github-actions-role
+arn:aws:iam::123456789012:role/flowlogic-github-actions-role
 ```
 
 #### Для Access Keys (fallback):

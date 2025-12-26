@@ -1,7 +1,7 @@
 # ❓ Почему Access Keys не используются?
 
-**Ваш Access Key:** `AKIAVEXAH5QOTGQYHS5U`  
-**Статус:** Создан, но не используется в GitHub Actions
+**Access Key:** Создан в AWS, но не используется в GitHub Actions  
+**Статус:** Требуется добавление в GitHub Secrets
 
 ---
 
@@ -15,7 +15,7 @@
 1. GitHub → **Settings** → **Secrets and variables** → **Actions**
 2. **New repository secret:**
    - Name: `AWS_ACCESS_KEY_ID`
-   - Value: `AKIAVEXAH5QOTGQYHS5U`
+   - Value: ваш Access Key ID (начинается с `AKIA`, 20 символов)
 3. **New repository secret:**
    - Name: `AWS_SECRET_ACCESS_KEY`
    - Value: ваш Secret Access Key (40 символов)
@@ -68,8 +68,8 @@ GitHub → Settings → Secrets and variables → Actions
 ```
 
 **Должны быть:**
-- ✅ `AWS_ACCESS_KEY_ID` = `AKIAVEXAH5QOTGQYHS5U`
-- ✅ `AWS_SECRET_ACCESS_KEY` = (ваш secret key)
+- ✅ `AWS_ACCESS_KEY_ID` = (ваш Access Key ID из AWS)
+- ✅ `AWS_SECRET_ACCESS_KEY` = (ваш Secret Access Key из AWS)
 - ❌ `AWS_ROLE_ARN` = (пустой или удален)
 
 ### Шаг 2: Перезапустите workflow
