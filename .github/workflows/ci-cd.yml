@@ -187,11 +187,25 @@ jobs:
           if [ -d "infra/serverless" ]; then
             cd infra/serverless
             echo "📦 Installing Serverless Framework..."
-            npm install -g serverless@latest
+            npm install -g serverless@latest || {
+              echo "⚠️  Failed to install serverless globally, trying local install..."
+              npm install serverless --save-dev
+            }
             echo "📦 Installing dependencies..."
             npm install
+            echo "📁 Current directory: $(pwd)"
+            echo "📁 Checking serverless.yml..."
+            if [ -f "serverless.yml" ]; then
+              echo "✅ serverless.yml found"
+            else
+              echo "❌ serverless.yml not found!"
+              exit 1
+            fi
             echo "🚀 Deploying to production..."
-            serverless deploy --stage production
+            npx serverless deploy --stage production || {
+              echo "❌ Deployment failed"
+              exit 1
+            }
           else
             echo "⚠️  infra/serverless directory not found, skipping deployment"
           fi
