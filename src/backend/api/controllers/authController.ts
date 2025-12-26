@@ -49,7 +49,7 @@ export async function register(req: Request, res: Response): Promise<void> {
       ],
     });
 
-    const cognitoResponse = await cognitoClient.send(signUpCommand);
+    await cognitoClient.send(signUpCommand);
 
     // Auto-confirm user (for dev/staging, skip email verification)
     if (process.env.STAGE === 'dev' || process.env.STAGE === 'staging') {
