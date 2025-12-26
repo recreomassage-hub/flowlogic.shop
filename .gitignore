@@ -56,7 +56,10 @@ known_hosts
 authorized_keys
 *.ppk
 ssh_config
-config
+# Исключаем только корневую config/ (SSH config)
+/config
+# Но НЕ исключаем src/backend/config/ и src/frontend/config/
+!/src/**/config/
 
 id_*
 *.key
