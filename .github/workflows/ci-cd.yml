@@ -172,6 +172,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    # Если используется OIDC, нужны permissions для получения токена
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
       - name: Checkout repository
@@ -190,10 +194,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-        # Если используется OIDC, нужны permissions для получения токена
-        permissions:
-          id-token: write
-          contents: read
       
       - name: Verify AWS credentials
         run: |
