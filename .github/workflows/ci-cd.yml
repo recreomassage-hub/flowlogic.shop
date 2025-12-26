@@ -45,15 +45,33 @@ jobs:
       - name: Install dependencies (Backend)
         if: hashFiles('src/backend/package.json') != ''
         run: |
-          cd src/backend
-          npm ci
+          if [ -f "src/backend/package.json" ]; then
+            cd src/backend
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              echo "⚠️  package-lock.json not found, using npm install"
+              npm install
+            fi
+          else
+            echo "⚠️  Backend package.json not found, skipping..."
+          fi
         continue-on-error: true
       
       - name: Install dependencies (Frontend)
         if: hashFiles('src/frontend/package.json') != ''
         run: |
-          cd src/frontend
-          npm ci
+          if [ -f "src/frontend/package.json" ]; then
+            cd src/frontend
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              echo "⚠️  package-lock.json not found, using npm install"
+              npm install
+            fi
+          else
+            echo "⚠️  Frontend package.json not found, skipping..."
+          fi
         continue-on-error: true
       
       - name: Build Backend
