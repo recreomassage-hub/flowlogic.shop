@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient, COGNITO_CONFIG } from '../../config/cognito';
 import { UserModel, User } from '../../db/models/User';
 import { v4 as uuidv4 } from 'uuid';
