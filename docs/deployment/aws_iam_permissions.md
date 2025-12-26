@@ -62,10 +62,7 @@
         "dynamodb:DescribeTable",
         "dynamodb:ListTables",
         "dynamodb:TagResource",
-        "dynamodb:UntagResource",
-        "dynamodb:CreateGlobalSecondaryIndex",
-        "dynamodb:UpdateGlobalSecondaryIndex",
-        "dynamodb:DeleteGlobalSecondaryIndex"
+        "dynamodb:UntagResource"
       ],
       "Resource": [
         "arn:aws:dynamodb:*:*:table/flowlogic-*"
