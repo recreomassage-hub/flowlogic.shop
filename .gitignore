@@ -70,3 +70,7 @@ id_*
 .serverless/
 gitleaks-*.json
 *-analysis.json
+
+# AWS CLI (не должен быть в репозитории)
+aws/dist/
+aws/

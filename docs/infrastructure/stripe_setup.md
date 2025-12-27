@@ -65,7 +65,7 @@ aws ssm put-parameter \
 ```bash
 aws ssm put-parameter \
   --name /flowlogic/prod/stripe/secret-key \
-  --value "sk_live_ваш_реальный_ключ" \
+  --value "YOUR_STRIPE_LIVE_SECRET_KEY" \
   --type SecureString \
   --description "Stripe Secret Key for production environment" \
   --key-id alias/aws/ssm \
@@ -155,7 +155,7 @@ STRIPE_SECRET_KEY: ${ssm:/flowlogic/${self:provider.stage}/stripe/secret-key, tr
    ```bash
    aws ssm put-parameter \
      --name /flowlogic/dev/stripe/secret-key \
-     --value "sk_test_placeholder" \
+     --value "YOUR_STRIPE_SECRET_KEY" \
      --type SecureString \
      --description "Stripe Secret Key placeholder for dev" \
      --key-id alias/aws/ssm

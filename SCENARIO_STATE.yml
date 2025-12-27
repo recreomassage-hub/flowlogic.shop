@@ -1,0 +1,37 @@
+# 🎛️ SCENARIO STATE - Состояние текущего сценария
+# Агенты НЕ могут изменять этот файл напрямую
+# Изменения только через ./llmos run или системные события
+
+current_scenario: PROJECT_BOOTSTRAP
+phase: REQUIREMENTS
+status: IN_PROGRESS
+last_update: 2025-12-27T17:18:15Z
+
+# Разрешенные действия для агентов в текущей фазе
+allowed_actions:
+  - read_config
+  - update_artifacts
+  - commit_changes
+
+# Ограничения для агентов
+agent_constraints:
+  can_change_scenario: false        # Агенты НЕ могут менять сценарий
+  can_change_phase: false           # Агенты НЕ могут менять фазу
+  can_run_scripts: false            # Агенты НЕ могут запускать скрипты
+  can_only_execute: true            # Агенты могут только выполнять allowed_actions
+
+# Контекст сценария
+context:
+  feature_slug: null                # Для FEATURE_DEVELOPMENT
+  target_environment: null          # Для DEPLOYMENT
+  incident_type: null                # Для INCIDENT_RECOVERY
+  rollback_target: null             # Для ROLLBACK
+
+# История переходов
+transitions:
+  - from: null
+    to: PROJECT_BOOTSTRAP
+    phase: INITIALIZATION
+    timestamp: 2025-12-26T00:00:00Z
+    trigger: SYSTEM_START
+

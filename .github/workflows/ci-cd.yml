@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'  # Updated from '20' (Node.js 20.x deprecated in Lambda 2026-04-30)
           # Не используем cache, так как package-lock.json в поддиректориях
       
       - name: Check project structure
@@ -316,7 +316,7 @@ jobs:
               echo "   1. Добавьте AWS_ACCESS_KEY_ID и AWS_SECRET_ACCESS_KEY"
               echo "   2. Удалите или оставьте пустым AWS_ROLE_ARN"
               echo ""
-              echo "📚 Troubleshooting: docs/deployment/aws_oidc_troubleshooting.md"
+              echo "📚 Troubleshooting: docs/deployment/troubleshooting/aws_credentials.md"
             else
               echo "🔍 Access Keys Configuration Issue:"
               echo ""

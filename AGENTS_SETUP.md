@@ -17,7 +17,7 @@ cp .env.example .env
 Откройте `.env` и добавьте ваш токен:
 
 ```env
-GITHUB_TOKEN=ghp_your_token_here
+GITHUB_TOKEN=YOUR_GITHUB_TOKEN_HERE
 GITHUB_REPO=recreomassage-hub/flowlogic.shop
 ```
 

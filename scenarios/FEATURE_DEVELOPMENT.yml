@@ -1,0 +1,67 @@
+# S2: FEATURE_DEVELOPMENT - Разработка фичи
+scenario: FEATURE_DEVELOPMENT
+
+phases:
+  BRIEF:
+    description: "Feature Brief (обязательно перед стартом!)"
+    allowed_actions:
+      - create_feature_brief
+      - update_docs
+    auto_scripts:
+      - scripts/feature_new.sh
+    next_phase: IMPACT_ANALYSIS
+    active_role: PM
+
+  IMPACT_ANALYSIS:
+    description: "Анализ влияния фичи на компоненты"
+    allowed_actions:
+      - read_feature_brief
+      - analyze_impact
+      - update_docs
+    auto_scripts:
+      - scripts/feature_impact.sh
+    next_phase: DESIGN
+    active_role: ARCHITECT
+
+  DESIGN:
+    description: "Дизайн (API/UX/Data) - только под эту фичу"
+    allowed_actions:
+      - create_api_design
+      - create_ux_design
+      - create_data_design
+      - update_docs
+    auto_scripts: []
+    next_phase: IMPLEMENTATION
+    active_role: ARCHITECT
+
+  IMPLEMENTATION:
+    description: "Реализация (микро-циклы: slice → commit)"
+    allowed_actions:
+      - update_code
+      - commit_changes
+      - run_tests
+    auto_scripts: []
+    next_phase: QA
+    active_role: BACKEND_DEV
+
+  QA:
+    description: "Тестирование (не в конце!)"
+    allowed_actions:
+      - run_tests
+      - update_qa_docs
+      - verify_feature_flag
+    auto_scripts:
+      - scripts/feature_check_flag.sh
+    next_phase: RELEASE
+    active_role: QA
+
+  RELEASE:
+    description: "Release с feature flag"
+    allowed_actions:
+      - enable_feature_flag
+      - create_release_notes
+      - update_docs
+    auto_scripts: []
+    next_phase: null
+    active_role: PM
+

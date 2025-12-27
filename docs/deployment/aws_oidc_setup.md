@@ -171,6 +171,9 @@
 
 ## 📚 Дополнительные ресурсы
 
+- **Troubleshooting:** `docs/deployment/troubleshooting/aws_credentials.md` - Диагностика проблем с OIDC
+- **IAM Setup:** `docs/deployment/aws_iam_setup.md` - Полная настройка IAM
+- **Credentials Setup:** `docs/deployment/aws_credentials_setup.md` - Настройка Access Keys (fallback)
 - [GitHub Actions OIDC with AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
 - [AWS IAM OIDC Identity Providers](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html)
 

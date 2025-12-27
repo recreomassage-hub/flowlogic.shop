@@ -1,0 +1,37 @@
+# S3: DEPLOYMENT - Деплой в production
+scenario: DEPLOYMENT
+
+phases:
+  PRE_DEPLOY:
+    description: "Pre-deployment checklist"
+    allowed_actions:
+      - check_readiness
+      - verify_config
+      - run_pre_deploy_tests
+    auto_scripts:
+      - scripts/pre_deployment_check.sh
+    next_phase: EXECUTE
+    active_role: INFRA_DEVOPS
+
+  EXECUTE:
+    description: "Выполнение деплоя"
+    allowed_actions:
+      - deploy_backend
+      - deploy_frontend
+      - verify_deployment
+    auto_scripts:
+      - scripts/deploy.sh
+    next_phase: VERIFY
+    active_role: INFRA_DEVOPS
+
+  VERIFY:
+    description: "Проверка после деплоя"
+    allowed_actions:
+      - run_smoke_tests
+      - check_metrics
+      - verify_health
+    auto_scripts:
+      - scripts/verify_deployment.sh
+    next_phase: null
+    active_role: QA
+

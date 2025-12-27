@@ -213,19 +213,154 @@ case "$1" in
         echo ""
         echo "✅ Tag $TAG создан и отправлен. Готово к деплою!"
         ;;
+    "feature")
+        case "$2" in
+            "new")
+                FEATURE_NAME="${3}"
+                DESCRIPTION="${4:-}"
+                if [ -z "$FEATURE_NAME" ]; then
+                    echo "❌ Укажите название фичи"
+                    echo "Использование: ./llmos feature new <feature_name> [description]"
+                    exit 1
+                fi
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/feature_new.sh" "$FEATURE_NAME" "$DESCRIPTION"
+                ;;
+            "impact")
+                FEATURE_SLUG="${3}"
+                if [ -z "$FEATURE_SLUG" ]; then
+                    echo "❌ Укажите slug фичи"
+                    echo "Использование: ./llmos feature impact <feature_slug>"
+                    exit 1
+                fi
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/feature_impact.sh" "$FEATURE_SLUG"
+                ;;
+            "check-flag"|"flag")
+                FEATURE_SLUG="${3}"
+                if [ -z "$FEATURE_SLUG" ]; then
+                    echo "❌ Укажите slug фичи"
+                    echo "Использование: ./llmos feature check-flag <feature_slug>"
+                    exit 1
+                fi
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/feature_check_flag.sh" "$FEATURE_SLUG"
+                ;;
+            "retro")
+                FEATURE_SLUG="${3}"
+                if [ -z "$FEATURE_SLUG" ]; then
+                    echo "❌ Укажите slug фичи"
+                    echo "Использование: ./llmos feature retro <feature_slug>"
+                    exit 1
+                fi
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/feature_retro.sh" "$FEATURE_SLUG"
+                ;;
+            "list")
+                echo "📋 Список фич:"
+                if [ -d "docs/features" ]; then
+                    for dir in docs/features/*/; do
+                        if [ -d "$dir" ]; then
+                            SLUG=$(basename "$dir")
+                            NAME=$(grep -E "^# Feature:" "${dir}feature_brief.md" 2>/dev/null | sed 's/# Feature: //' || echo "$SLUG")
+                            STATUS=$(grep -E "^\\*\\*Статус:\\*\\*" "${dir}feature_brief.md" 2>/dev/null | sed 's/\*\*Статус:\*\* //' || echo "UNKNOWN")
+                            echo "  • $SLUG - $NAME ($STATUS)"
+                        fi
+                    done
+                else
+                    echo "  Нет фич"
+                fi
+                ;;
+            *)
+                echo "🚀 Feature Workflow Commands:"
+                echo "  ./llmos feature new <name> [desc]     - Создать новую фичу"
+                echo "  ./llmos feature impact <slug>        - Анализ влияния"
+                echo "  ./llmos feature check-flag <slug>      - Проверить feature flag"
+                echo "  ./llmos feature retro <slug>          - Ретроспектива"
+                echo "  ./llmos feature list                   - Список фич"
+                echo ""
+                echo "См. также: docs/features/feature_workflow.md"
+                ;;
+        esac
+        ;;
+    "run")
+        # 🎛️ SCENARIO ENGINE - Автоматическое выполнение сценария
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        "$SCRIPT_DIR/scripts/scenario_engine.sh" run
+        ;;
+    "execute")
+        # 🎛️ SCENARIO ENGINE - Выполнить автодействия и перейти к следующей фазе
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        "$SCRIPT_DIR/scripts/scenario_engine.sh" execute
+        ;;
+    "scenario"|"sc")
+        # Управление сценариями
+        case "$2" in
+            "run")
+                # ▶ SCENARIO RUN - Выполнить автодействия текущей фазы
+                echo "▶ SCENARIO RUN"
+                echo ""
+                
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/scenario_engine.sh" execute
+                ;;
+            "status")
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/scenario_engine.sh" status
+                ;;
+            "set")
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/scenario_engine.sh" set "$3" "$4"
+                ;;
+            "next")
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/scenario_engine.sh" next-phase
+                ;;
+            *)
+                echo "🎛️ Управление сценариями:"
+                echo "  ./llmos scenario run         - Выполнить автодействия текущей фазы"
+                echo "  ./llmos scenario status      - Показать статус сценария"
+                echo "  ./llmos scenario set <S> [P]  - Установить сценарий (системные события)"
+                echo "  ./llmos scenario next        - Перейти к следующей фазе"
+                echo ""
+                echo "Сценарии: PROJECT_BOOTSTRAP, FEATURE_DEVELOPMENT, DEPLOYMENT,"
+                echo "          INCIDENT_RECOVERY, QUALITY_GATE, ROLLBACK, MAINTENANCE"
+                ;;
+        esac
+        ;;
     "help")
-        echo "🚀 LLM-OS Команды (27 промптов система, оптимизировано):"
+        echo "🚀 LLM-OS Команды (27 промптов система + сценарный режим):"
+        echo ""
+        echo "🎛️ СЦЕНАРНЫЙ РЕЖИМ (NEW):"
+        echo "  ./llmos run              - Показать информацию о текущей фазе"
+        echo "  ./llmos execute          - Выполнить автодействия и перейти к следующей фазе"
+        echo "  ./llmos scenario run     - Выполнить автодействия текущей фазы (АВТОМАТИЧЕСКИ)"
+        echo "  ./llmos scenario status  - Показать статус сценария"
+        echo "  ./llmos scenario set <S> [P] - Установить сценарий (системные события)"
+        echo "  ./llmos scenario next    - Перейти к следующей фазе"
+        echo ""
+        echo "📋 КЛАССИЧЕСКИЕ КОМАНДЫ:"
         echo "  ./llmos tz-full        - TZ Pipeline (полный цикл)"
         echo "  ./llmos next           - Показать следующий промпт (EXECUTE → PEER)"
         echo "  ./llmos execute [ROLE] - EXECUTE режим для роли"
         echo "  ./llmos peer [ROLE]    - PEER-REVIEW режим для роли"
         echo "  ./llmos approve        - OWNER Final Approval"
-        echo "  ./llmos status         - Показать статус"
+        echo "  ./llmos status         - Показать статус (WORKFLOW_STATE)"
         echo "  ./llmos commit|step    - Сделать коммит (атомарный)"
         echo "  ./llmos monitor        - Запустить мониторинг"
         echo "  ./llmos check-ssm|ssm  - Проверить SSM параметры (все окружения)"
         echo "  ./llmos deploy         - Production deployment (tag + инструкции)"
-        echo "  ./llmos help           - Показать эту справку"
+        echo ""
+        echo "🚀 FEATURE WORKFLOW:"
+        echo "  ./llmos feature new <name> [desc]     - Создать новую фичу"
+        echo "  ./llmos feature impact <slug>        - Анализ влияния"
+        echo "  ./llmos feature check-flag <slug>    - Проверить feature flag"
+        echo "  ./llmos feature retro <slug>         - Ретроспектива"
+        echo "  ./llmos feature list                - Список фич"
+        echo ""
+        echo "📚 Документация:"
+        echo "  docs/scenarios/scenarios_reference.md - Справочник сценариев"
+        echo "  SCENARIO_STATE.yml                    - Текущее состояние"
         echo ""
         echo "Роли: ANALYST, ARCHITECT, PM, BACKEND_DEV, FRONTEND_DEV,"
         echo "      INFRA_DEVOPS, QA, SECURITY, DOCS, OWNER"
@@ -233,7 +368,9 @@ case "$1" in
         echo "⚠️ SELF-REVIEW удален (0 ценность, галлюцинации агента)"
         ;;
     *)
-        echo "Используйте: ./llmos [tz-full|next|execute|self|peer|approve|status|commit|step|monitor|check-ssm|ssm|deploy|help]"
+        echo "Используйте: ./llmos [run|scenario|tz-full|next|execute|self|peer|approve|status|commit|step|monitor|check-ssm|ssm|deploy|feature|help]"
+        echo ""
+        echo "Для справки: ./llmos help"
         ;;
 esac
 

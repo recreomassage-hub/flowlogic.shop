@@ -1,6 +1,51 @@
 # 🔐 Настройка AWS Credentials для GitHub Actions
 
-## Проблема
+---
+
+## ⚡ БЫСТРОЕ РЕШЕНИЕ (5 минут)
+
+Если вы видите ошибку `Error: Could not assume role with OIDC: Request ARN is invalid` или `AWS provider credentials not found`, используйте этот быстрый способ:
+
+### Шаг 1: Создайте IAM User (2 минуты)
+
+1. AWS Console → IAM → Users → **Create user**
+2. Имя: `flowlogic-github-actions-user`
+3. **Attach policies directly:**
+   - Выберите: `FlowLogicGitHubActionsDeployPolicy` (если создана)
+   - ИЛИ: `PowerUserAccess` (временно для теста)
+
+### Шаг 2: Создайте Access Keys (1 минута)
+
+1. Выберите пользователя → **Security credentials** tab
+2. **Create access key** → **Application running outside AWS**
+3. **Скопируйте:**
+   - Access key ID (начинается с `AKIA`)
+   - Secret access key (40 символов)
+
+### Шаг 3: Добавьте в GitHub Secrets (1 минута)
+
+1. GitHub → Repository → **Settings** → **Secrets and variables** → **Actions**
+2. **New repository secret:**
+   - Name: `AWS_ACCESS_KEY_ID_PROD`
+   - Value: ваш Access Key ID
+3. **New repository secret:**
+   - Name: `AWS_SECRET_ACCESS_KEY_PROD`
+   - Value: ваш Secret Access Key
+4. **ВАЖНО:** Удалите или оставьте пустым `AWS_ROLE_ARN`
+
+### Шаг 4: Перезапустите workflow (1 минута)
+
+1. GitHub → **Actions**
+2. Найдите failed workflow
+3. **Re-run jobs** или **Run workflow**
+
+**Готово!** Workflow автоматически использует Access Keys.
+
+---
+
+## 📋 ПОЛНАЯ ИНСТРУКЦИЯ
+
+### Проблема
 
 Если вы видите ошибку:
 ```
@@ -11,8 +56,6 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 Это означает, что AWS credentials не настроены в GitHub Secrets.
 
 ---
-
-## 📋 Пошаговая инструкция
 
 ### Шаг 1: Создание IAM User в AWS
 
@@ -59,12 +102,16 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 4. Добавьте два секрета:
 
    **Secret 1:**
-   - Name: `AWS_ACCESS_KEY_ID`
+   - Name: `AWS_ACCESS_KEY_ID_PROD` (для production)
    - Value: ваш Access key ID (из шага 3)
 
    **Secret 2:**
-   - Name: `AWS_SECRET_ACCESS_KEY`
+   - Name: `AWS_SECRET_ACCESS_KEY_PROD` (для production)
    - Value: ваш Secret access key (из шага 3)
+
+   **Для других environments:**
+   - `AWS_ACCESS_KEY_ID_DEV` / `AWS_SECRET_ACCESS_KEY_DEV` (для dev)
+   - `AWS_ACCESS_KEY_ID_STAGING` / `AWS_SECRET_ACCESS_KEY_STAGING` (для staging)
 
 5. Нажмите **Add secret** для каждого
 
@@ -108,6 +155,8 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 }
 ```
 
+Для точного списка permissions см. `docs/deployment/aws_iam_permissions.md`
+
 ---
 
 ## ✅ Проверка настройки
@@ -126,8 +175,9 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 Если workflow все еще падает:
 
 1. **Проверьте, что secrets правильно названы:**
-   - `AWS_ACCESS_KEY_ID` (точно так, без пробелов)
-   - `AWS_SECRET_ACCESS_KEY` (точно так, без пробелов)
+   - `AWS_ACCESS_KEY_ID_PROD` (для production)
+   - `AWS_SECRET_ACCESS_KEY_PROD` (для production)
+   - Или `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (fallback)
 
 2. **Проверьте, что Access Key активен:**
    - AWS Console → IAM → Users → ваш пользователь → Security credentials
@@ -153,9 +203,13 @@ Please configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets
 
 ## 📚 Дополнительные ресурсы
 
+- **Troubleshooting:** `docs/deployment/troubleshooting/aws_credentials.md` - Полная диагностика проблем
+- **OIDC Setup:** `docs/deployment/aws_oidc_setup.md` - Настройка OIDC (рекомендуется для production)
+- **IAM Permissions:** `docs/deployment/aws_iam_permissions.md` - Точный список permissions
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [AWS IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
 - [Serverless Framework AWS Credentials](https://www.serverless.com/framework/docs/providers/aws/guide/credentials)
 
+---
 
-
+**Последнее обновление:** 2025-12-26
