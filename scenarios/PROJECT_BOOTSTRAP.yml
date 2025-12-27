@@ -40,6 +40,15 @@ phases:
       - create_configs
       - update_docs
     auto_scripts: []
-    next_phase: null
+    next_phase: READY
     active_role: INFRA_DEVOPS
+
+  READY:
+    description: "Проект готов к разработке (терминальная фаза)"
+    allowed_actions:
+      - read_config
+      - start_feature
+    auto_scripts: []
+    next_phase: null
+    active_role: OWNER
 
