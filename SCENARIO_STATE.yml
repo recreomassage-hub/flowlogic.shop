@@ -3,9 +3,9 @@
 # Изменения только через ./llmos run или системные события
 
 current_scenario: PROJECT_BOOTSTRAP
-phase: ARCHITECTURE
+phase: SETUP
 status: IN_PROGRESS
-last_update: 2025-12-27T17:18:52Z
+last_update: 2025-12-27T17:24:46Z
 
 # Разрешенные действия для агентов в текущей фазе
 allowed_actions:
