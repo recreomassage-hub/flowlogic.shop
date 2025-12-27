@@ -3,9 +3,9 @@
 # Изменения только через ./llmos run или системные события
 
 current_scenario: DEPLOYMENT
-phase: BRIEF
-status: COMPLETED
-last_update: 2025-12-27T18:14:19Z
+phase: EXECUTE
+status: IN_PROGRESS
+last_update: 2025-12-27T21:17:21Z
 
 # Разрешенные действия для агентов в текущей фазе
 allowed_actions:
