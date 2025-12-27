@@ -110,7 +110,8 @@ case "$1" in
         ;;
     "commit"|"step")
         echo "💾 Выполнение коммита..."
-        ./step.sh
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        "$SCRIPT_DIR/step.sh"
         ;;
     "monitor")
         # Определяем корень проекта (где находится monitor.sh)

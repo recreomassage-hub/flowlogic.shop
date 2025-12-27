@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # step.sh - Атомарный коммит для LLM-OS
 
+# Определяем корень проекта (где находится step.sh)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "📦 LLM-OS: Подготовка коммита..."
 echo "================================="
 
 # Проверяем что WORKFLOW_STATE.md существует
 if [ ! -f "WORKFLOW_STATE.md" ]; then
-    echo "❌ Ошибка: WORKFLOW_STATE.md не найден"
+    echo "❌ Ошибка: WORKFLOW_STATE.md не найден в $SCRIPT_DIR"
     exit 1
 fi
 
