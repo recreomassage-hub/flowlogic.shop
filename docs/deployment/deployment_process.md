@@ -104,8 +104,8 @@ npx serverless info --stage production
 Service deployed to stack flowlogic-backend-production
 
 endpoints:
-  ANY - https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/{proxy+}
-  ANY - https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/
+  ANY - https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod/{proxy+}
+  ANY - https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod/
 
 functions:
   api: flowlogic-backend-production-api (29 MB)
@@ -154,13 +154,13 @@ vercel deploy --prod
 ```bash
 # Проверить, что frontend использует правильный API URL
 # В Vercel Dashboard: Settings → Environment Variables
-# VITE_API_URL = https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production
+# VITE_API_URL = https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod
 ```
 
 **Проверка CORS:**
 ```bash
 # Проверить CORS headers
-curl -I -X OPTIONS https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/ \
+curl -I -X OPTIONS https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod/ \
   -H "Origin: https://flowlogic.shop" \
   -H "Access-Control-Request-Method: GET"
 ```
@@ -175,7 +175,7 @@ Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 **Проверка endpoints:**
 ```bash
 # Health endpoint
-curl https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/
+curl https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod/
 
 # Должен вернуть 200 OK
 ```

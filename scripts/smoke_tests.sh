@@ -15,10 +15,10 @@ API_URL="${2:-}"
 if [ -z "$API_URL" ]; then
     case "$ENV" in
         "production"|"prod")
-            API_URL="https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production"
+            API_URL="https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod"
             ;;
         "staging"|"stage")
-            API_URL="https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/staging"
+            API_URL="https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/staging"
             ;;
         "dev"|"development")
             API_URL="https://t1p7ii26f5.execute-api.us-east-1.amazonaws.com/dev"

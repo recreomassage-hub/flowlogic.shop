@@ -29,10 +29,10 @@
 **Команды для проверки:**
 ```bash
 # Проверка health endpoint
-curl -I https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/
+curl -I https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod/
 
 # Проверка CORS
-curl -I -X OPTIONS https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/ \
+curl -I -X OPTIONS https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod/ \
   -H "Origin: https://flowlogic.shop" \
   -H "Access-Control-Request-Method: GET"
 ```
