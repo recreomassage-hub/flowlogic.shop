@@ -58,15 +58,8 @@ jobs:
         working-directory: infra/serverless
         run: serverless deploy --stage dev --verbose
 
-      - name: Run smoke tests
-        run: |
-          API_URL="https://t1p7ii26f5.execute-api.us-east-1.amazonaws.com/dev"
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health")
-          if [ "$response" != "200" ]; then
-            echo "❌ Smoke test failed: Health endpoint returned $response"
-            exit 1
-          fi
-          echo "✅ Smoke test passed: Health endpoint returned 200"
+      - name: Run post-deploy checks
+        run: ./scripts/post_deploy.sh dev
 
   deploy-staging:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'staging')
@@ -105,16 +98,8 @@ jobs:
         working-directory: infra/serverless
         run: serverless deploy --stage staging --verbose
 
-      - name: Run smoke tests
-        run: |
-          # Получить URL из serverless info или использовать известный
-          API_URL="https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/staging"
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health")
-          if [ "$response" != "200" ]; then
-            echo "❌ Smoke test failed: Health endpoint returned $response"
-            exit 1
-          fi
-          echo "✅ Smoke test passed: Health endpoint returned 200"
+      - name: Run post-deploy checks
+        run: ./scripts/post_deploy.sh staging
 
   deploy-production:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'production')
@@ -153,13 +138,6 @@ jobs:
         working-directory: infra/serverless
         run: serverless deploy --stage production --verbose
 
-      - name: Run smoke tests
-        run: |
-          API_URL="https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production"
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health")
-          if [ "$response" != "200" ]; then
-            echo "❌ Smoke test failed: Health endpoint returned $response"
-            exit 1
-          fi
-          echo "✅ Smoke test passed: Health endpoint returned 200"
+      - name: Run post-deploy checks
+        run: ./scripts/post_deploy.sh production
 

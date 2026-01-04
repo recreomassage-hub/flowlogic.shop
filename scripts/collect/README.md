@@ -148,3 +148,4 @@
 - `ROLES/05_frontend_dev.md` - PLAN/BUILD режимы для FRONTEND_DEV
 - `scenarios/DEEP_REFACTOR.yml` - сценарий для глубоких рефакторингов
 
+

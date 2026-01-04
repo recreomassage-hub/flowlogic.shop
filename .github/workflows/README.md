@@ -117,3 +117,4 @@ Workflows используют GitHub Environments для управления �
 - Проверьте API Gateway endpoint
 - Проверьте health endpoint в Lambda logs
 
+

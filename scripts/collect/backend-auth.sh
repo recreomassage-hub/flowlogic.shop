@@ -131,3 +131,4 @@ OUTPUT_FILE="$OUTPUT_DIR/collected_backend_auth.md"
 echo "✅ Контекст собран: $OUTPUT_FILE"
 cat "$OUTPUT_FILE"
 
+

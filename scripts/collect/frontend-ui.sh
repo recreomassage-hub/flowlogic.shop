@@ -148,3 +148,4 @@ OUTPUT_FILE="$OUTPUT_DIR/collected_frontend_ui.md"
 echo "✅ Контекст собран: $OUTPUT_FILE"
 cat "$OUTPUT_FILE"
 
+
