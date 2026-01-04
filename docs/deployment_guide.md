@@ -399,6 +399,93 @@ git push origin main
 
 ## 📊 Monitoring Setup
 
+### CloudWatch Logs
+
+**Настройка:**
+- Log Group автоматически создается при первом запуске Lambda функции
+- Retention policy: 14 дней для production, 7 дней для dev/staging
+- Настроено в `serverless.yml`: `logRetentionInDays: 7`
+
+**Просмотр логов:**
+```bash
+# Через AWS CLI
+aws logs tail /aws/lambda/flowlogic-backend-production-api --follow --region us-east-1
+
+# Через CloudWatch Console
+# https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups
+```
+
+### CloudWatch Alarms
+
+**Настройка алертов:**
+Используйте файл `infra/serverless/monitoring.yml` для создания CloudWatch Alarms:
+
+```bash
+# Добавить monitoring resources в serverless.yml
+# Или деплоить отдельно:
+aws cloudformation deploy \
+  --template-file infra/serverless/monitoring.yml \
+  --stack-name flowlogic-production-monitoring \
+  --region us-east-1
+```
+
+**Алерты:**
+1. **Error Rate Alarm** - срабатывает при > 5 ошибок за 5 минут
+2. **Duration Alarm** - срабатывает при средней длительности > 5 секунд
+3. **Throttle Alarm** - срабатывает при throttling Lambda функции
+
+**SNS Topics:**
+- `flowlogic-production-error-alerts`
+- `flowlogic-production-duration-alerts`
+- `flowlogic-production-throttle-alerts`
+
+**Настройка email подписки:**
+```bash
+# Подписаться на алерты
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:ACCOUNT_ID:flowlogic-production-error-alerts \
+  --protocol email \
+  --notification-endpoint your-email@example.com
+```
+
+### Метрики для мониторинга
+
+**Ключевые метрики:**
+- `Invocations` - количество вызовов Lambda функции
+- `Duration` - средняя длительность выполнения
+- `Errors` - количество ошибок
+- `Throttles` - количество throttles
+- `ConcurrentExecutions` - текущее количество параллельных выполнений
+
+**Просмотр метрик:**
+```bash
+# Через CloudWatch Console
+# https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#metricsV2
+
+# Через AWS CLI
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/Lambda \
+  --metric-name Duration \
+  --dimensions Name=FunctionName,Value=flowlogic-backend-production-api \
+  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+  --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+  --period 300 \
+  --statistics Average \
+  --region us-east-1
+```
+
+### Sentry (опционально)
+
+**Настройка Sentry для error tracking:**
+1. Создать проект в Sentry
+2. Получить DSN
+3. Добавить в SSM Parameter Store: `/flowlogic/production/sentry/dsn`
+4. Обновить Lambda функцию для отправки ошибок в Sentry
+
+---
+
+## 📊 Monitoring Setup (старая версия)
+
 > **Для Deploy Supervisor (DS):** Разделы Monitoring Setup и Post-Deployment Checklist являются основой для автоматических проверок после деплоя. DS использует эти метрики для подтверждения успешности операции.
 
 ### CloudWatch Logs
@@ -491,6 +578,8 @@ vercel rollback
 ## ✅ Post-Deployment Checklist
 
 > **Для Deploy Supervisor (DS):** Этот чеклист является основой для автоматических проверок после деплоя. DS должен проходить по каждому пункту и подтверждать успешность операции.
+
+**📋 Полный чеклист:** См. `docs/deployment/post_deployment_checklist.md`
 
 ### Backend
 
@@ -592,6 +681,11 @@ See [Troubleshooting Guide](docs/troubleshooting.md) for more details.
 ---
 
 ## 📚 Related Documentation
+
+- **Post-Deployment Checklist:** [docs/deployment/post_deployment_checklist.md](deployment/post_deployment_checklist.md) - Детальный чеклист после deployment
+- **Deployment Process:** [docs/deployment/deployment_process.md](deployment/deployment_process.md) - Полный процесс deployment
+- **Smoke Tests:** `scripts/smoke_tests.sh` - Скрипт для smoke tests
+- **Monitoring Setup:** `scripts/setup_monitoring.sh` - Настройка CloudWatch мониторинга
 
 - **Infrastructure:** [infra/README.md](../infra/README.md)
 - **Secrets Management:** [infra/SECRETS.md](../infra/SECRETS.md)

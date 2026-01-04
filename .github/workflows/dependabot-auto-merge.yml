@@ -1,0 +1,88 @@
+# Автоматический мерж Dependabot PR для мелких обновлений
+# Мержит patch/minor обновления после успешного прохождения CI
+
+name: Dependabot Auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge Dependabot PR
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get PR information
+        id: pr-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            // Проверяем, что это patch или minor обновление
+            const title = pr.title.toLowerCase();
+            const isPatch = title.includes('patch') || title.match(/bump .+ from .+ to .+ \(patch\)/i);
+            const isMinor = title.includes('minor') || title.match(/bump .+ from .+ to .+ \(minor\)/i);
+            const isPatchOrMinor = isPatch || isMinor;
+            
+            // Проверяем, что CI прошел успешно
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+            
+            const allChecksPassed = checks.check_runs.every(
+              check => check.status === 'completed' && check.conclusion === 'success'
+            );
+            
+            return {
+              shouldMerge: isPatchOrMinor && allChecksPassed,
+              isPatchOrMinor,
+              allChecksPassed,
+            };
+      
+      - name: Auto-merge PR
+        if: steps.pr-info.outputs.shouldMerge == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              merge_method: 'squash',
+            });
+            
+            console.log(`✅ Автоматически смержен PR #${context.issue.number} от Dependabot`);
+      
+      - name: Comment on PR
+        if: steps.pr-info.outputs.shouldMerge != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reason = !steps.pr-info.outputs.isPatchOrMinor 
+              ? 'Это major обновление, требуется ручная проверка'
+              : 'CI еще не прошел успешно';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `⚠️ Автоматический мерж пропущен: ${reason}`
+            });
+

@@ -1,0 +1,117 @@
+# CloudWatch Monitoring и Alerts для Flow Logic Backend
+
+Resources:
+  # CloudWatch Log Group для Lambda функции
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/flowlogic-backend-${self:provider.stage}-api
+      RetentionInDays: 14
+
+  # CloudWatch Alarm: Error Rate
+  ErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-${self:provider.stage}-error-rate
+      AlarmDescription: "Alarm when error rate exceeds 5%"
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: flowlogic-backend-${self:provider.stage}-api
+      AlarmActions:
+        - !Ref ErrorRateSNS
+      TreatMissingData: notBreaching
+
+  # CloudWatch Alarm: Duration
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-${self:provider.stage}-duration
+      AlarmDescription: "Alarm when function duration exceeds 5 seconds"
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5000  # 5 seconds in milliseconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: flowlogic-backend-${self:provider.stage}-api
+      AlarmActions:
+        - !Ref DurationSNS
+      TreatMissingData: notBreaching
+
+  # CloudWatch Alarm: Throttles
+  ThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-${self:provider.stage}-throttles
+      AlarmDescription: "Alarm when function is throttled"
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: flowlogic-backend-${self:provider.stage}-api
+      AlarmActions:
+        - !Ref ThrottleSNS
+      TreatMissingData: notBreaching
+
+  # SNS Topic для алертов
+  ErrorRateSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: flowlogic-${self:provider.stage}-error-alerts
+      DisplayName: Flow Logic ${self:provider.stage} Error Alerts
+
+  DurationSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: flowlogic-${self:provider.stage}-duration-alerts
+      DisplayName: Flow Logic ${self:provider.stage} Duration Alerts
+
+  ThrottleSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: flowlogic-${self:provider.stage}-throttle-alerts
+      DisplayName: Flow Logic ${self:provider.stage} Throttle Alerts
+
+  # SNS Subscription (email) - опционально
+  # ErrorRateSubscription:
+  #   Type: AWS::SNS::Subscription
+  #   Properties:
+  #     TopicArn: !Ref ErrorRateSNS
+  #     Protocol: email
+  #     Endpoint: your-email@example.com
+
+Outputs:
+  ErrorRateAlarmArn:
+    Description: "ARN of Error Rate Alarm"
+    Value: !Ref ErrorRateAlarm
+    Export:
+      Name: ${self:provider.stage}-ErrorRateAlarmArn
+
+  DurationAlarmArn:
+    Description: "ARN of Duration Alarm"
+    Value: !Ref DurationAlarm
+    Export:
+      Name: ${self:provider.stage}-DurationAlarmArn
+
+  ThrottleAlarmArn:
+    Description: "ARN of Throttle Alarm"
+    Value: !Ref ThrottleAlarm
+    Export:
+      Name: ${self:provider.stage}-ThrottleAlarmArn
+
+

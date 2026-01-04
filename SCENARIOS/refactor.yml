@@ -1,0 +1,81 @@
+# Refactor - Рефакторинг существующего проекта
+# Конфигурация маршрута для LLM-OS core-движка
+
+name: Refactor
+description: "Рефакторинг существующего проекта с анализом и улучшением"
+
+# Роли, которые будут использоваться
+roles:
+  - ANALYST          # Анализ текущего состояния
+  - ARCHITECT        # Новая архитектура
+  - BACKEND_DEV      # Рефакторинг backend
+  - FRONTEND_DEV     # Рефакторинг frontend
+  - QA               # Тестирование после рефакторинга
+  - OWNER
+
+# Роли, которые будут пропущены
+skip_roles:
+  - PM               # Планирование не требуется
+  - INFRA_DEVOPS     # Инфраструктура уже настроена
+  - SECURITY          # Security review опционально
+  - DOCS              # Документация обновляется минимально
+
+# Глубина проработки
+depth:
+  ANALYST:
+    requirements: medium    # Анализ текущих требований
+    user_stories: light
+    glossary: light
+    qna: full              # Важно понять проблемы
+  
+  ARCHITECT:
+    c4_diagrams: full
+    db_schema: medium       # Если БД не меняется
+    api_spec: full
+    tech_stack: medium
+    adr: full              # Важно документировать решения
+  
+  BACKEND_DEV:
+    code_coverage: 80       # Выше для рефакторинга
+    documentation: full
+  
+  FRONTEND_DEV:
+    code_coverage: 70
+    documentation: full
+  
+  QA:
+    test_coverage: 80      # Выше для рефакторинга
+    test_types: [unit, integration, e2e, regression]
+
+# Ожидаемые артефакты
+outputs:
+  requirements:
+    - docs/requirements/refactor_analysis.md
+  
+  architecture:
+    - docs/architecture/refactor_plan.md
+    - docs/architecture/adr/*.md
+  
+  backend:
+    - src/backend/**        # Рефакторенный код
+  
+  frontend:
+    - src/frontend/**      # Рефакторенный код
+  
+  testing:
+    - tests/regression/**
+
+# Параметры
+parameters:
+  time_to_market: medium
+  complexity_budget: medium
+  quality_gate: strict    # Строгий контроль для рефакторинга
+  owner_approval: true
+
+# Ограничения
+constraints:
+  require_regression_tests: true
+  min_test_coverage: 80
+  require_documentation: true
+
+

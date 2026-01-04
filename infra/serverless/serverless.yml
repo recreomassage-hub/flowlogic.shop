@@ -52,6 +52,9 @@ provider:
             - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.users}/index/*
             - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.subscriptions}/index/*
             - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.assessments}/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.plans}/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.calendarTasks}/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tables.progress}/index/*
         - Effect: Allow
           Action:
             - s3:GetObject
@@ -124,6 +127,10 @@ functions:
             allowCredentials: true
 
 resources:
+  # Импорт monitoring resources из отдельного файла
+  # Для активации раскомментируйте следующую строку:
+  # - ${file(monitoring.yml)}
+  
   Resources:
     # DynamoDB Tables
     UsersTable:
@@ -222,6 +229,137 @@ resources:
               ProjectionType: ALL
         StreamSpecification:
           StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    PlansTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.plans}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: plan_id
+            AttributeType: S
+          - AttributeName: is_active
+            AttributeType: N
+          - AttributeName: created_at
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+          - AttributeName: plan_id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: active-index
+            KeySchema:
+              - AttributeName: is_active
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    CalendarTasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.calendarTasks}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: task_date
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+          - AttributeName: task_date
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: date-index
+            KeySchema:
+              - AttributeName: task_date
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    ProgressTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.progress}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+          - AttributeName: streak
+            AttributeType: N
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: streak-index
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+              - AttributeName: streak
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    UserLimitsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.userLimits}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        SSESpecification:
+          SSEEnabled: true
+          SSEType: KMS
+
+    MigrationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tables.migrations}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: version
+            AttributeType: S
+        KeySchema:
+          - AttributeName: version
+            KeyType: HASH
+        # Streams disabled for migrations table
         SSESpecification:
           SSEEnabled: true
           SSEType: KMS

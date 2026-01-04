@@ -1,0 +1,144 @@
+# SaaS MVP - Полный цикл разработки SaaS приложения
+# Конфигурация маршрута для LLM-OS core-движка
+
+name: SaaS MVP
+description: "Полный цикл разработки SaaS приложения от требований до production"
+
+# Роли, которые будут использоваться (в порядке выполнения)
+roles:
+  - ANALYST
+  - ARCHITECT
+  - PM
+  - BACKEND_DEV
+  - FRONTEND_DEV
+  - INFRA_DEVOPS
+  - QA
+  - SECURITY
+  - DOCS
+  - OWNER
+
+# Роли, которые будут пропущены (опционально)
+skip_roles: []
+
+# Глубина проработки для каждой роли
+depth:
+  ANALYST:
+    requirements: full          # full | medium | light
+    user_stories: full
+    glossary: full
+    qna: full
+  
+  ARCHITECT:
+    c4_diagrams: full
+    db_schema: full
+    api_spec: full
+    tech_stack: full
+    adr: medium                 # минимум 1 ADR
+  
+  PM:
+    epics: full
+    sprint_plan: full
+    roadmap: full
+  
+  BACKEND_DEV:
+    code_coverage: 75           # процент покрытия тестами
+    documentation: medium
+  
+  FRONTEND_DEV:
+    code_coverage: 60
+    documentation: medium
+  
+  INFRA_DEVOPS:
+    ci_cd: full
+    monitoring: medium
+    documentation: full
+  
+  QA:
+    test_coverage: 75           # процент покрытия тестами
+    test_types: [unit, integration, e2e]
+  
+  SECURITY:
+    threat_model: full
+    security_checklist: full
+    policies: full
+  
+  DOCS:
+    user_manual: full
+    api_docs: full
+    deployment_guide: full
+    troubleshooting: full
+
+# Ожидаемые артефакты на выходе
+outputs:
+  requirements:
+    - docs/requirements/PRD.md
+    - docs/requirements/user_stories.md
+    - docs/requirements/glossary.md
+    - docs/requirements/qna.md
+    - docs/requirements/non_functional.md
+  
+  architecture:
+    - docs/architecture/c4_diagrams.md
+    - docs/architecture/db_schema.md
+    - docs/architecture/api_spec.yaml
+    - docs/architecture/tech_stack.md
+    - docs/architecture/adr/*.md
+  
+  planning:
+    - docs/planning/epics.md
+    - docs/planning/sprint_plan.md
+    - docs/planning/roadmap.md
+  
+  backend:
+    - src/backend/**
+  
+  frontend:
+    - src/frontend/**
+  
+  infrastructure:
+    - infra/serverless/**
+    - infra/ci-cd/**
+    - infra/README.md
+  
+  testing:
+    - tests/unit/**
+    - tests/integration/**
+    - tests/e2e/**
+    - docs/testing/test_plan.md
+  
+  security:
+    - docs/security/threat_model.md
+    - docs/security/security_checklist.md
+    - docs/security/policies.md
+  
+  documentation:
+    - docs/user_manual.md
+    - docs/api_documentation.md
+    - docs/deployment_guide.md
+    - docs/troubleshooting.md
+    - docs/developer_guide.md
+    - README.md
+
+# Параметры проекта
+parameters:
+  time_to_market: fast           # fast | medium | slow
+  complexity_budget: medium     # low | medium | high
+  quality_gate: strict          # strict | medium | light
+  owner_approval: true          # требуется ли финальное одобрение OWNER
+
+# Ограничения
+constraints:
+  max_story_points: 200
+  max_sprints: 12
+  min_test_coverage: 70
+  require_security_review: true
+  require_documentation: true
+
+# Кастомные правила для сценария
+rules:
+  - "Все роли проходят через EXECUTE → PEER-REVIEW"
+  - "OWNER финальное одобрение обязательно"
+  - "Quality Gate после каждой роли"
+  - "Все артефакты должны быть закоммичены"
+
+

@@ -1,42 +1,78 @@
-# Dependabot configuration
-# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Dependabot configuration для автоматического обновления зависимостей
 
 version: 2
 updates:
-  # Enable version updates for npm
+  # npm dependencies (backend)
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/src/backend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "recreomassage-hub"
     labels:
       - "dependencies"
-      - "security"
+      - "backend"
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      # Игнорируем major updates (требуют ручной проверки)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
-  # Enable version updates for pip
-  - package-ecosystem: "pip"
-    directory: "/"
+  # npm dependencies (frontend)
+  - package-ecosystem: "npm"
+    directory: "/src/frontend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "recreomassage-hub"
     labels:
       - "dependencies"
-      - "security"
+      - "frontend"
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
-  # Enable version updates for GitHub Actions
+  # npm dependencies (infra/serverless)
+  - package-ecosystem: "npm"
+    directory: "/infra/serverless"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "recreomassage-hub"
+    labels:
+      - "dependencies"
+      - "infrastructure"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "recreomassage-hub"
     labels:
       - "dependencies"
-      - "github-actions"
-
-
+      - "ci-cd"

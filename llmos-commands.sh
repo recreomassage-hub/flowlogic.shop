@@ -47,6 +47,27 @@ case "$1" in
         echo "Используй промпты: PROMPTS/00_tz_analyst.md → PROMPTS/00_tz_reviewer.md"
         ;;
     "next")
+        # Проверяем сценарий и пропускаем ненужные роли
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        CURRENT_ROLE=$(get_current_role)
+        
+        # Проверяем, включена ли текущая роль в сценарии
+        if [ -f "$SCRIPT_DIR/scripts/read_scenario.sh" ]; then
+            IS_ENABLED=$("$SCRIPT_DIR/scripts/read_scenario.sh" enabled "$CURRENT_ROLE")
+            SCENARIO_NAME=$("$SCRIPT_DIR/scripts/read_scenario.sh" name)
+            
+            if [ "$IS_ENABLED" = "false" ]; then
+                echo "⏭️  Роль $CURRENT_ROLE пропущена в сценарии '$SCENARIO_NAME'"
+                echo "📋 Переход к следующей включенной роли..."
+                echo ""
+                # TODO: Автоматический переход к следующей включенной роли
+                # Пока просто показываем следующий промпт
+            else
+                echo "✅ Роль $CURRENT_ROLE включена в сценарии '$SCENARIO_NAME'"
+                echo ""
+            fi
+        fi
+        
         prompt=$(get_next_prompt)
         if [ -n "$prompt" ]; then
             echo "🔄 Следующий промпт: PROMPTS/$prompt"
@@ -297,6 +318,87 @@ case "$1" in
     "scenario"|"sc")
         # Управление сценариями
         case "$2" in
+            "list")
+                # 📋 SCENARIO LIST - Показать доступные сценарии
+                echo "📋 Доступные сценарии:"
+                echo ""
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                SCENARIOS_DIR="$SCRIPT_DIR/SCENARIOS"
+                
+                if [ -d "$SCENARIOS_DIR" ]; then
+                    for file in "$SCENARIOS_DIR"/*.yml; do
+                        if [ -f "$file" ]; then
+                            SCENARIO_NAME=$(basename "$file" .yml)
+                            NAME=$(grep "^name:" "$file" 2>/dev/null | cut -d: -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "$SCENARIO_NAME")
+                            DESC=$(grep "^description:" "$file" 2>/dev/null | cut -d: -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/"//g' || echo "No description")
+                            
+                            # Проверяем, выбран ли этот сценарий
+                            CURRENT=$(grep -E "^\\*\\*Выбранный сценарий:\\*\\*" "$SCRIPT_DIR/PROJECT_CONFIG.md" 2>/dev/null | sed 's/\*\*Выбранный сценарий:\*\* //' | sed 's/`//g' | sed 's/ (.*//' || echo "")
+                            if [ "$SCENARIO_NAME" = "$CURRENT" ]; then
+                                echo "  ✅ $SCENARIO_NAME - $NAME (текущий)"
+                            else
+                                echo "  • $SCENARIO_NAME - $NAME"
+                            fi
+                            echo "     $DESC"
+                            echo ""
+                        fi
+                    done
+                else
+                    echo "  ❌ Папка SCENARIOS/ не найдена"
+                fi
+                
+                # Показываем также FSM сценарии
+                echo "📋 FSM Сценарии (scenarios/):"
+                if [ -d "$SCRIPT_DIR/scenarios" ]; then
+                    for file in "$SCRIPT_DIR/scenarios"/*.yml; do
+                        if [ -f "$file" ]; then
+                            SCENARIO_NAME=$(basename "$file" .yml)
+                            echo "  • $SCENARIO_NAME (FSM сценарий)"
+                        fi
+                    done
+                fi
+                ;;
+            "start")
+                # 🚀 SCENARIO START - Выбрать сценарий
+                SCENARIO_NAME="${3}"
+                if [ -z "$SCENARIO_NAME" ]; then
+                    echo "❌ Укажите название сценария"
+                    echo "Использование: ./llmos scenario start <scenario_name>"
+                    echo ""
+                    echo "Доступные сценарии:"
+                    echo "  ./llmos scenario list"
+                    exit 1
+                fi
+                
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                SCENARIO_FILE="$SCRIPT_DIR/SCENARIOS/${SCENARIO_NAME}.yml"
+                
+                if [ ! -f "$SCENARIO_FILE" ]; then
+                    echo "❌ Сценарий не найден: $SCENARIO_FILE"
+                    echo "Доступные сценарии:"
+                    echo "  ./llmos scenario list"
+                    exit 1
+                fi
+                
+                # Обновляем PROJECT_CONFIG.md
+                if grep -q "\\*\\*Выбранный сценарий:\\*\\*" "$SCRIPT_DIR/PROJECT_CONFIG.md" 2>/dev/null; then
+                    sed -i "s|\\*\\*Выбранный сценарий:\\*\\* \`[^\`]*\`|\\*\\*Выбранный сценарий:\\*\\* \`${SCENARIO_NAME}\`|" "$SCRIPT_DIR/PROJECT_CONFIG.md"
+                    sed -i "s|\\*\\*Файл сценария:\\*\\* \`[^\`]*\`|\\*\\*Файл сценария:\\*\\* \`SCENARIOS/${SCENARIO_NAME}.yml\`|" "$SCRIPT_DIR/PROJECT_CONFIG.md"
+                else
+                    # Добавляем секцию, если её нет
+                    sed -i "/^## 🎬 СЦЕНАРИЙ ПРОЕКТА/a\\
+**Выбранный сценарий:** \`${SCENARIO_NAME}\`\\
+\\
+**Файл сценария:** \`SCENARIOS/${SCENARIO_NAME}.yml\`\\
+" "$SCRIPT_DIR/PROJECT_CONFIG.md"
+                fi
+                
+                NAME=$(grep "^name:" "$SCENARIO_FILE" 2>/dev/null | cut -d: -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || echo "$SCENARIO_NAME")
+                echo "✅ Сценарий выбран: $SCENARIO_NAME - $NAME"
+                echo "📋 PROJECT_CONFIG.md обновлен"
+                echo ""
+                echo "Следующий шаг: ./llmos next (проверит сценарий и пропустит ненужные роли)"
+                ;;
             "run")
                 # ▶ SCENARIO RUN - Выполнить автодействия текущей фазы
                 echo "▶ SCENARIO RUN"
@@ -319,18 +421,178 @@ case "$1" in
                 ;;
             *)
                 echo "🎛️ Управление сценариями:"
+                echo "  ./llmos scenario list         - Показать доступные сценарии"
+                echo "  ./llmos scenario start <name> - Выбрать сценарий (записывает в PROJECT_CONFIG.md)"
                 echo "  ./llmos scenario run         - Выполнить автодействия текущей фазы"
                 echo "  ./llmos scenario status      - Показать статус сценария"
                 echo "  ./llmos scenario set <S> [P]  - Установить сценарий (системные события)"
                 echo "  ./llmos scenario next        - Перейти к следующей фазе"
                 echo ""
-                echo "Сценарии: PROJECT_BOOTSTRAP, FEATURE_DEVELOPMENT, DEPLOYMENT,"
+                echo "📋 Сценарии маршрутов (SCENARIOS/): saas_mvp, docs_only, refactor"
+                echo "📋 FSM Сценарии (scenarios/): PROJECT_BOOTSTRAP, FEATURE_DEVELOPMENT, DEPLOYMENT,"
                 echo "          INCIDENT_RECOVERY, QUALITY_GATE, ROLLBACK, MAINTENANCE"
+                ;;
+        esac
+        ;;
+    "branch"|"br")
+        # Управление Git ветками
+        case "$2" in
+            "create"|"new")
+                STAGE="${3}"
+                if [ -z "$STAGE" ]; then
+                    echo "❌ Укажите название этапа"
+                    echo "Использование: ./llmos branch create <stage>"
+                    echo ""
+                    echo "Примеры:"
+                    echo "  ./llmos branch create requirements"
+                    echo "  ./llmos branch create architecture"
+                    exit 1
+                fi
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/create_feature_branch.sh" "$STAGE"
+                ;;
+            "merge")
+                SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                "$SCRIPT_DIR/scripts/merge_to_develop.sh"
+                ;;
+            "status")
+                CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+                echo "🌿 Текущая ветка: $CURRENT_BRANCH"
+                echo ""
+                echo "📋 Ветки:"
+                git branch -a 2>/dev/null | head -10 || echo "  (не удалось получить список веток)"
+                ;;
+            *)
+                echo "🌿 Управление Git ветками:"
+                echo "  ./llmos branch create <stage>  - Создать feature ветку для этапа"
+                echo "  ./llmos branch merge           - Merge текущей feature ветки в develop"
+                echo "  ./llmos branch status          - Показать статус веток"
+                echo ""
+                echo "📚 См. также: docs/git_workflow.md"
+                ;;
+        esac
+        ;;
+    "plan")
+        # 🎯 PLAN режим - Создание плана для сложной задачи
+        TASK_NAME="${2}"
+        if [ -z "$TASK_NAME" ]; then
+            echo "❌ Укажите название задачи"
+            echo "Использование: ./llmos plan <task_name>"
+            echo ""
+            echo "Примеры:"
+            echo "  ./llmos plan backend_refactor"
+            echo "  ./llmos plan frontend-ui-redesign"
+            echo "  ./llmos plan auth-migration"
+            exit 1
+        fi
+        
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        OUTPUT_DIR="$SCRIPT_DIR/artifacts"
+        mkdir -p "$OUTPUT_DIR"
+        
+        # Определяем тип задачи и собираем контекст
+        if [[ "$TASK_NAME" == *"backend"* ]] || [[ "$TASK_NAME" == *"auth"* ]]; then
+            echo "🔍 Сбор контекста для backend..."
+            "$SCRIPT_DIR/scripts/collect/backend-auth.sh" > "$OUTPUT_DIR/PLAN_${TASK_NAME}.md" 2>&1 || true
+        elif [[ "$TASK_NAME" == *"frontend"* ]] || [[ "$TASK_NAME" == *"ui"* ]]; then
+            echo "🔍 Сбор контекста для frontend..."
+            "$SCRIPT_DIR/scripts/collect/frontend-ui.sh" > "$OUTPUT_DIR/PLAN_${TASK_NAME}.md" 2>&1 || true
+        else
+            echo "🔍 Сбор контекста по ключевым словам..."
+            "$SCRIPT_DIR/scripts/collect/smart.sh" $TASK_NAME > "$OUTPUT_DIR/PLAN_${TASK_NAME}.md" 2>&1 || true
+        fi
+        
+        PLAN_FILE="$OUTPUT_DIR/PLAN_${TASK_NAME}.md"
+        echo ""
+        echo "✅ Контекст собран: $PLAN_FILE"
+        echo ""
+        echo "📋 Следующий шаг:"
+        echo "  1. Прочитай $PLAN_FILE"
+        echo "  2. Создай план: фазы, чек-лист, правила стиля"
+        echo "  3. Запиши план в artifacts/PLAN_${TASK_NAME}_plan.md"
+        echo ""
+        echo "   Затем: ./llmos build $TASK_NAME phase-1"
+        ;;
+    "build")
+        # 🔨 BUILD режим - Реализация по плану
+        TASK_NAME="${2}"
+        PHASE="${3:-phase-1}"
+        
+        if [ -z "$TASK_NAME" ]; then
+            echo "❌ Укажите название задачи"
+            echo "Использование: ./llmos build <task_name> [phase]"
+            echo ""
+            echo "Примеры:"
+            echo "  ./llmos build backend_refactor phase-1"
+            echo "  ./llmos build frontend-ui-redesign phase-2"
+            exit 1
+        fi
+        
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        PLAN_FILE="$SCRIPT_DIR/artifacts/PLAN_${TASK_NAME}_plan.md"
+        CONTEXT_FILE="$SCRIPT_DIR/artifacts/PLAN_${TASK_NAME}.md"
+        
+        if [ ! -f "$PLAN_FILE" ]; then
+            echo "⚠️  План не найден: $PLAN_FILE"
+            echo "   Сначала создай план: ./llmos plan $TASK_NAME"
+            exit 1
+        fi
+        
+        echo "🔨 BUILD режим: $TASK_NAME ($PHASE)"
+        echo ""
+        echo "📋 План: $PLAN_FILE"
+        if [ -f "$CONTEXT_FILE" ]; then
+            echo "📄 Контекст: $CONTEXT_FILE"
+        fi
+        echo ""
+        echo "✅ Реализуй только фазу: $PHASE"
+        echo "   Следуй строго плану из $PLAN_FILE"
+        echo "   Используй контекст из $CONTEXT_FILE"
+        ;;
+    "collect")
+        # 🔍 COLLECT - Сбор контекста
+        TYPE="${2}"
+        ARGS="${@:3}"
+        
+        if [ -z "$TYPE" ]; then
+            echo "🔍 Сбор контекста:"
+            echo "  ./llmos collect backend-auth     - Backend authentication"
+            echo "  ./llmos collect frontend-ui      - Frontend UI"
+            echo "  ./llmos collect smart <keywords>  - Умный поиск по ключевым словам"
+            exit 1
+        fi
+        
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        
+        case "$TYPE" in
+            "backend-auth")
+                "$SCRIPT_DIR/scripts/collect/backend-auth.sh"
+                ;;
+            "frontend-ui")
+                "$SCRIPT_DIR/scripts/collect/frontend-ui.sh"
+                ;;
+            "smart")
+                if [ -z "$ARGS" ]; then
+                    echo "❌ Укажите ключевые слова"
+                    echo "Использование: ./llmos collect smart keyword1 keyword2 ..."
+                    exit 1
+                fi
+                "$SCRIPT_DIR/scripts/collect/smart.sh" $ARGS
+                ;;
+            *)
+                echo "❌ Неизвестный тип: $TYPE"
+                echo "Доступные: backend-auth, frontend-ui, smart"
+                exit 1
                 ;;
         esac
         ;;
     "help")
         echo "🚀 LLM-OS Команды (27 промптов система + сценарный режим):"
+        echo ""
+        echo "🎯 PLAN/BUILD РЕЖИМ (NEW):"
+        echo "  ./llmos plan <task>           - Собрать контекст и создать план"
+        echo "  ./llmos build <task> [phase]   - Реализовать фазу по плану"
+        echo "  ./llmos collect <type>        - Сбор контекста (backend-auth, frontend-ui, smart)"
         echo ""
         echo "🎛️ СЦЕНАРНЫЙ РЕЖИМ (NEW):"
         echo "  ./llmos run              - Показать информацию о текущей фазе"
@@ -339,6 +601,11 @@ case "$1" in
         echo "  ./llmos scenario status  - Показать статус сценария"
         echo "  ./llmos scenario set <S> [P] - Установить сценарий (системные события)"
         echo "  ./llmos scenario next    - Перейти к следующей фазе"
+        echo ""
+        echo "🌿 GIT WORKFLOW (NEW):"
+        echo "  ./llmos branch create <stage>  - Создать feature ветку для этапа"
+        echo "  ./llmos branch merge           - Merge feature ветки в develop"
+        echo "  ./llmos branch status          - Показать статус веток"
         echo ""
         echo "📋 КЛАССИЧЕСКИЕ КОМАНДЫ:"
         echo "  ./llmos tz-full        - TZ Pipeline (полный цикл)"
@@ -361,7 +628,8 @@ case "$1" in
         echo ""
         echo "📚 Документация:"
         echo "  docs/scenarios/scenarios_reference.md - Справочник сценариев"
-        echo "  SCENARIO_STATE.yml                    - Текущее состояние"
+        echo "  docs/git_workflow.md                   - Git workflow"
+        echo "  SCENARIO_STATE.yml                     - Текущее состояние"
         echo ""
         echo "Роли: ANALYST, ARCHITECT, PM, BACKEND_DEV, FRONTEND_DEV,"
         echo "      INFRA_DEVOPS, QA, SECURITY, DOCS, OWNER"

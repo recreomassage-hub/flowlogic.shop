@@ -25,7 +25,7 @@
   - Отсутствие secret management
 
 ### 2. ПОЛИТИКИ ДОСТУПА И ДАННЫЕ
-- Проверка схемы БД и Supabase policies/Row Level Security (RLS)
+- Проверка схемы БД и DynamoDB IAM policies
 - Проверка, что PII/чувствительные данные не хранятся в логах
 - План ротации ключей/токенов
 - Минимально необходимые права сервисов
@@ -145,7 +145,7 @@
 
 ### Phase 4 (Month 2): Специфичные проверки
 - Container scanning
-- RLS audit скрипт для Supabase
+- DynamoDB IAM policies audit скрипт
 
 ## 📋 SECURITY CHECKLIST ПО СЛОЯМ
 
@@ -156,7 +156,7 @@
 - [ ] 2FA доступна для критичных операций
 
 ### Data Layer
-- [ ] RLS policies включены на всех таблицах (Supabase)
+- [ ] DynamoDB IAM policies настроены правильно для всех таблиц
 - [ ] Sensitive columns защищены (password, email)
 - [ ] Backup strategy документирована
 - [ ] Нет public read доступа к приватным таблицам
@@ -173,24 +173,21 @@
 - [ ] Input validation на всех endpoints
 - [ ] SQL injection невозможен (ORM или parameterized queries)
 
-### Supabase-специфично
-- [ ] Row Level Security (RLS) policies audit
-- [ ] Realtime subscription security
-- [ ] Storage bucket policies
-- [ ] JWT/auth token handling
-- [ ] Webhook security (если используется)
-
 ### Vercel-специфично
 - [ ] Environment variables security (что хранится в .env.production?)
 - [ ] API route security (rate limiting, auth middleware)
 - [ ] Serverless cold starts и инициализация сессий
 - [ ] Edge function security
 
-### Railway-специфично
-- [ ] Container image scanning
-- [ ] Network policies между сервисами
-- [ ] Внешний доступ к БД (должен быть через proxy?)
-- [ ] Secret rotation механизм
+### AWS-специфично
+- [ ] DynamoDB encryption at rest (KMS) включена
+- [ ] DynamoDB IAM policies настроены правильно
+- [ ] Lambda function IAM roles используют принцип наименьших привилегий
+- [ ] API Gateway throttling и WAF настроены
+- [ ] Cognito User Pool security policies настроены
+- [ ] S3 bucket policies настроены (no public access)
+- [ ] CloudWatch Logs retention настроен
+- [ ] SSM Parameter Store используется для секретов
 
 ## 🏁 КРИТЕРИИ ЗАВЕРШЕНИЯ
 - [ ] Threat model создан и согласован

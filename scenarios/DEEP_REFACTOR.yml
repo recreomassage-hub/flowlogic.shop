@@ -1,0 +1,93 @@
+# S3: DEEP_REFACTOR - Глубокий рефакторинг с PLAN/BUILD
+scenario: DEEP_REFACTOR
+
+phases:
+  COLLECT:
+    description: "Сбор полного контекста релевантного кода"
+    allowed_actions:
+      - read_config
+      - collect_context
+      - update_artifacts
+    auto_scripts:
+      - scripts/collect/smart.sh
+    next_phase: PLAN
+    active_role: ARCHITECT
+
+  PLAN:
+    description: "Создание плана рефакторинга (фазы, чек-лист, правила стиля)"
+    allowed_actions:
+      - read_collected_context
+      - create_plan
+      - update_artifacts
+    auto_scripts: []
+    next_phase: BUILD_PHASE_1
+    active_role: ARCHITECT
+
+  BUILD_PHASE_1:
+    description: "Реализация фазы 1 по плану"
+    allowed_actions:
+      - read_plan
+      - read_collected_context
+      - update_code
+      - commit_changes
+      - run_tests
+    auto_scripts: []
+    next_phase: BUILD_PHASE_2
+    active_role: BACKEND_DEV
+
+  BUILD_PHASE_2:
+    description: "Реализация фазы 2 по плану"
+    allowed_actions:
+      - read_plan
+      - read_collected_context
+      - update_code
+      - commit_changes
+      - run_tests
+    auto_scripts: []
+    next_phase: BUILD_PHASE_3
+    active_role: BACKEND_DEV
+
+  BUILD_PHASE_3:
+    description: "Реализация фазы 3 по плану (опционально)"
+    allowed_actions:
+      - read_plan
+      - read_collected_context
+      - update_code
+      - commit_changes
+      - run_tests
+    auto_scripts: []
+    next_phase: QA_REVIEW
+    active_role: BACKEND_DEV
+
+  QA_REVIEW:
+    description: "QA проверка всего рефакторинга с полным контекстом"
+    allowed_actions:
+      - read_collected_context
+      - read_plan
+      - run_tests
+      - update_qa_docs
+    auto_scripts: []
+    next_phase: SECURITY_REVIEW
+    active_role: QA
+
+  SECURITY_REVIEW:
+    description: "Security проверка рефакторинга"
+    allowed_actions:
+      - read_collected_context
+      - read_plan
+      - security_audit
+      - update_security_docs
+    auto_scripts: []
+    next_phase: DOCS_UPDATE
+    active_role: SECURITY
+
+  DOCS_UPDATE:
+    description: "Обновление документации после рефакторинга"
+    allowed_actions:
+      - read_collected_context
+      - read_plan
+      - update_docs
+    auto_scripts: []
+    next_phase: null
+    active_role: DOCS
+

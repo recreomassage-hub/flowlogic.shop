@@ -28,6 +28,10 @@ __pycache__/
 reports/*.html
 reports/*.pdf
 
+# Artifacts (собранные контексты и планы)
+artifacts/*.md
+!artifacts/README.md
+
 # Temporary
 tmp/
 temp/
@@ -74,3 +78,18 @@ gitleaks-*.json
 # AWS CLI (не должен быть в репозитории)
 aws/dist/
 aws/
+awscliv2.zip
+*.zip
+!node_modules/**/*.zip  # Разрешаем zip в node_modules (зависимости)
+
+# AWS CLI installation files
+awscliv2/
+awscli/
+aws-cli/
+
+# AWS config files (кроме примеров)
+.aws/
+aws-credentials
+aws-config
+*aws*.config
+!**/aws-config.example

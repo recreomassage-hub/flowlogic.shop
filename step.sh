@@ -55,7 +55,32 @@ fi
 
 # Автоопределение правильного remote
 REMOTE=$(git remote get-url flowlogic 2>/dev/null || echo "origin")
-git push "$REMOTE" main 2>/dev/null && echo "✅ Pushed to $REMOTE" || echo "⚠️ Push failed (возможно, нет прав или нет сети)"
+
+# Определяем текущую ветку
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
+
+# Безопасный push в зависимости от ветки
+if [[ "$CURRENT_BRANCH" == feat/* ]]; then
+    # Feature ветка → push в feature ветку
+    git push "$REMOTE" "$CURRENT_BRANCH" 2>/dev/null && echo "✅ Pushed to $REMOTE/$CURRENT_BRANCH" || echo "⚠️ Push failed (возможно, нет прав или нет сети)"
+elif [[ "$CURRENT_BRANCH" == "develop" ]]; then
+    # Develop ветка → push в develop
+    git push "$REMOTE" develop 2>/dev/null && echo "✅ Pushed to $REMOTE/develop" || echo "⚠️ Push failed (возможно, нет прав или нет сети)"
+elif [[ "$CURRENT_BRANCH" == "main" ]]; then
+    # Main ветка → только после явного подтверждения (production-ready код)
+    echo "⚠️  ВНИМАНИЕ: Вы на ветке main!"
+    echo "   Убедитесь, что это production-ready код."
+    echo "   Рекомендуется использовать develop для разработки."
+    read -p "   Продолжить push в main? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        git push "$REMOTE" main 2>/dev/null && echo "✅ Pushed to $REMOTE/main" || echo "⚠️ Push failed"
+    else
+        echo "❌ Push отменен. Переключитесь на develop: git checkout develop"
+    fi
+else
+    # Другие ветки → push в текущую ветку
+    git push "$REMOTE" "$CURRENT_BRANCH" 2>/dev/null && echo "✅ Pushed to $REMOTE/$CURRENT_BRANCH" || echo "⚠️ Push failed (возможно, нет прав или нет сети)"
+fi
 
 echo ""
 echo "✅ Коммит выполнен!"
