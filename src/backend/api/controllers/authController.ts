@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand, ConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient, COGNITO_CONFIG } from '../../config/cognito';
 import { UserModel, User } from '../../db/models/User';
 import { v4 as uuidv4 } from 'uuid';
@@ -188,6 +188,63 @@ export async function logout(_req: Request, res: Response): Promise<void> {
   // Clear refresh token cookie
   res.clearCookie('refreshToken');
   res.status(200).json({ message: 'Logged out successfully' });
+}
+
+/**
+ * Confirm user registration with verification code
+ */
+export async function confirmRegistration(req: Request, res: Response): Promise<void> {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Email and verification code are required',
+      });
+      return;
+    }
+
+    // Confirm sign up with Cognito
+    const confirmCommand = new ConfirmSignUpCommand({
+      ClientId: COGNITO_CONFIG.clientId,
+      Username: email,
+      ConfirmationCode: code,
+    });
+
+    await cognitoClient.send(confirmCommand);
+
+    res.status(200).json({
+      message: 'Email verified successfully. You can now login.',
+    });
+  } catch (error: any) {
+    console.error('Confirmation error:', error);
+    if (error.name === 'CodeMismatchException') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid verification code',
+      });
+      return;
+    }
+    if (error.name === 'ExpiredCodeException') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Verification code has expired',
+      });
+      return;
+    }
+    if (error.name === 'NotAuthorizedException') {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'User is already confirmed',
+      });
+      return;
+    }
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to confirm registration',
+    });
+  }
 }
 
 /**

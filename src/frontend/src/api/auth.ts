@@ -28,9 +28,19 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface VerifyRequest {
+  email: string;
+  code: string;
+}
+
 export const authApi = {
   register: async (data: RegisterRequest): Promise<User> => {
     const response = await apiClient.post<User>('/auth/register', data);
+    return response.data;
+  },
+
+  verify: async (data: VerifyRequest): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/auth/verify', data);
     return response.data;
   },
 

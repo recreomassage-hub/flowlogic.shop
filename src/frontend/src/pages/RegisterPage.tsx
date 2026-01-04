@@ -17,7 +17,9 @@ export function RegisterPage() {
     }
     try {
       await register(email, password, name);
-      navigate('/dashboard');
+      // Redirect to verification page (in production, user needs to verify email)
+      // In dev/staging, backend auto-confirms, so we can go to dashboard
+      navigate(`/verify?email=${encodeURIComponent(email)}`);
     } catch (err) {
       // Error handled by store
     }

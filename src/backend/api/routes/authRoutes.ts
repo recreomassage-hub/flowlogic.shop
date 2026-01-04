@@ -4,6 +4,7 @@ import * as authController from '../controllers/authController';
 const router = Router();
 
 router.post('/register', authController.register);
+router.post('/verify', authController.confirmRegistration);
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
 router.post('/refresh', authController.refreshToken);

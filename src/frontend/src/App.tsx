@@ -3,6 +3,7 @@ import { Layout } from './components/common/Layout';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TiersPage } from './pages/TiersPage';
 import { AssessmentsPage } from './pages/AssessmentsPage';
@@ -16,6 +17,7 @@ function App() {
         <Route index element={<HomePage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="verify" element={<VerifyEmailPage />} />
         <Route
           path="dashboard"
           element={
