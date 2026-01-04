@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { TiersPage } from './pages/TiersPage';
 import { AssessmentsPage } from './pages/AssessmentsPage';
 import { AssessmentDetailPage } from './pages/AssessmentDetailPage';
+import { AssessmentNewPage } from './pages/AssessmentNewPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 function App() {
@@ -39,6 +40,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AssessmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="assessments/new"
+          element={
+            <ProtectedRoute>
+              <AssessmentNewPage />
             </ProtectedRoute>
           }
         />
