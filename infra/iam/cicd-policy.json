@@ -12,6 +12,9 @@
         "lambda:ListFunctions",
         "lambda:DeleteFunction",
         "lambda:PublishVersion",
+        "lambda:ListVersionsByFunction",
+        "lambda:GetFunctionVersion",
+        "lambda:DeleteFunctionVersion",
         "lambda:CreateAlias",
         "lambda:UpdateAlias",
         "lambda:GetAlias",
@@ -160,6 +163,7 @@
     }
   ]
 }
+
 
 
 
