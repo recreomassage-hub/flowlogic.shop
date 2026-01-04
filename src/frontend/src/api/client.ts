@@ -2,18 +2,18 @@ import axios from 'axios';
 
 // API URL для разных окружений
 const getApiBaseUrl = () => {
-  // В production используем переменную окружения
+  // 1. Приоритет - переменная из Vercel (которую мы добавили: VITE_API_URL)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
   
-  // В dev используем реальный endpoint
+  // 2. Если мы в режиме разработки (npm run dev)
   if (import.meta.env.DEV) {
     return 'https://t1p7ii26f5.execute-api.us-east-1.amazonaws.com/dev';
   }
   
-  // Fallback для production
-  return 'https://api.flowlogic.shop';
+  // 3. Твой реальный рабочий Production API (заменяем заглушку api.flowlogic.shop)
+  return 'https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production';
 };
 
 const API_BASE_URL = getApiBaseUrl();
