@@ -12,8 +12,8 @@ const getApiBaseUrl = () => {
     return 'https://t1p7ii26f5.execute-api.us-east-1.amazonaws.com/dev';
   }
   
-  // 3. Твой реальный рабочий Production API (заменяем заглушку api.flowlogic.shop)
-  return 'https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production';
+  // 3. Твой реальный рабочий Production API (актуальный endpoint после деплоя)
+  return 'https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod';
 };
 
 const API_BASE_URL = getApiBaseUrl();
