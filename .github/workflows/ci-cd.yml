@@ -376,9 +376,8 @@ jobs:
         run: |
           cd src/frontend
           npm install -g vercel
-          vercel deploy --prebuilt --prod
+          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
