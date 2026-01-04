@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0  # Полная история для агентов
         
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'  # Updated from '20' (Node.js 20.x deprecated in Lambda 2026-04-30)
           # Не используем cache, так как package-lock.json в поддиректориях
@@ -135,7 +135,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
       
@@ -182,7 +182,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
       
