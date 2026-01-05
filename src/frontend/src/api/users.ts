@@ -7,12 +7,12 @@ export interface UpdateUserRequest {
 
 export const usersApi = {
   getCurrentUser: async (): Promise<User> => {
-    const response = await apiClient.get<User>('/users/me');
+    const response = await apiClient.get<User>('/v1/users/me');
     return response.data;
   },
 
   updateUser: async (data: UpdateUserRequest): Promise<User> => {
-    const response = await apiClient.patch<User>('/users/me', data);
+    const response = await apiClient.patch<User>('/v1/users/me', data);
     return response.data;
   },
 };

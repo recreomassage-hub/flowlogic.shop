@@ -13,6 +13,7 @@ const getApiBaseUrl = () => {
   }
   
   // 3. Твой реальный рабочий Production API (актуальный endpoint после деплоя)
+  // Stage (/prod) должен быть включен в baseURL
   return 'https://4yei7a5aig.execute-api.us-east-1.amazonaws.com/prod';
 };
 
@@ -51,7 +52,7 @@ apiClient.interceptors.response.use(
 
       try {
         // Попытка обновить токен
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+        const response = await axios.post(`${API_BASE_URL}/v1/auth/refresh`, {}, { withCredentials: true });
         const { access_token } = response.data;
         localStorage.setItem('access_token', access_token);
 

@@ -9,6 +9,7 @@ router.use(authenticateToken);
 
 router.get('/', assessmentController.getAssessments);
 router.post('/', assessmentController.createAssessment);
+router.get('/:assessment_id/export', assessmentController.exportAssessment);
 router.get('/:assessment_id', assessmentController.getAssessment);
 router.put('/:assessment_id', assessmentController.updateAssessment);
 

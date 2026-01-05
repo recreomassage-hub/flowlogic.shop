@@ -35,29 +35,29 @@ export interface VerifyRequest {
 
 export const authApi = {
   register: async (data: RegisterRequest): Promise<User> => {
-    const response = await apiClient.post<User>('/auth/register', data);
+    const response = await apiClient.post<User>('/v1/auth/register', data);
     return response.data;
   },
 
   verify: async (data: VerifyRequest): Promise<{ message: string }> => {
-    const response = await apiClient.post<{ message: string }>('/auth/verify', data);
+    const response = await apiClient.post<{ message: string }>('/v1/auth/verify', data);
     return response.data;
   },
 
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>('/auth/login', data);
+    const response = await apiClient.post<AuthResponse>('/v1/auth/login', data);
     // Сохраняем токен
     localStorage.setItem('access_token', response.data.access_token);
     return response.data;
   },
 
   logout: async (): Promise<void> => {
-    await apiClient.post('/auth/logout');
+    await apiClient.post('/v1/auth/logout');
     localStorage.removeItem('access_token');
   },
 
   refreshToken: async (): Promise<{ access_token: string; expires_in: number }> => {
-    const response = await apiClient.post<{ access_token: string; expires_in: number }>('/auth/refresh');
+    const response = await apiClient.post<{ access_token: string; expires_in: number }>('/v1/auth/refresh');
     localStorage.setItem('access_token', response.data.access_token);
     return response.data;
   },

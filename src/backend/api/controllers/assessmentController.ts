@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import { AssessmentModel, Assessment } from '../../db/models/Assessment';
 import { UserModel } from '../../db/models/User';
 import { getPresignedUrl, S3_CONFIG } from '../../config/s3';
+import { generateAssessmentPDF } from '../../services/pdfService';
 import { v4 as uuidv4 } from 'uuid';
 
 // Test catalog (Elite catalog)
@@ -236,6 +237,76 @@ export async function updateAssessment(req: AuthRequest, res: Response): Promise
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to update assessment',
+    });
+  }
+}
+
+/**
+ * Export assessment as PDF
+ */
+export async function exportAssessment(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { assessment_id } = req.params;
+
+    if (!assessment_id) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'assessment_id is required',
+      });
+      return;
+    }
+
+    // Get assessment
+    const assessment = await AssessmentModel.getById(req.user.sub, assessment_id);
+
+    if (!assessment) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Assessment not found',
+      });
+      return;
+    }
+
+    // Get user profile for name (optional)
+    let user: { name?: string; email: string } | undefined;
+    try {
+      const userData = await UserModel.getById(req.user.sub);
+      if (userData) {
+        user = {
+          name: userData.name,
+          email: userData.email,
+        };
+      }
+    } catch (error) {
+      // User data not critical for PDF, continue without it
+      console.warn('Failed to get user data for PDF:', error);
+    }
+
+    // Generate PDF
+    const pdfBuffer = await generateAssessmentPDF(assessment, user);
+
+    // Generate filename
+    const dateStr = new Date(assessment.created_at).toISOString().split('T')[0];
+    const testNameSlug = assessment.test_name.toLowerCase().replace(/\s+/g, '-');
+    const filename = `assessment-${testNameSlug}-${dateStr}.pdf`;
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
+
+    // Send PDF
+    res.status(200).send(pdfBuffer);
+  } catch (error) {
+    console.error('Export assessment error:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to export assessment',
     });
   }
 }

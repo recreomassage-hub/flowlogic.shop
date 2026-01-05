@@ -39,22 +39,29 @@ export interface UpdateAssessmentRequest {
 
 export const assessmentsApi = {
   getAssessments: async (params?: { month?: string; test_id?: number }): Promise<Assessment[]> => {
-    const response = await apiClient.get<{ assessments: Assessment[] }>('/assessments', { params });
+    const response = await apiClient.get<{ assessments: Assessment[] }>('/v1/assessments', { params });
     return response.data.assessments;
   },
 
   createAssessment: async (data: CreateAssessmentRequest): Promise<CreateAssessmentResponse> => {
-    const response = await apiClient.post<CreateAssessmentResponse>('/assessments', data);
+    const response = await apiClient.post<CreateAssessmentResponse>('/v1/assessments', data);
     return response.data;
   },
 
   getAssessment: async (assessmentId: string): Promise<Assessment> => {
-    const response = await apiClient.get<Assessment>(`/assessments/${assessmentId}`);
+    const response = await apiClient.get<Assessment>(`/v1/assessments/${assessmentId}`);
     return response.data;
   },
 
   updateAssessment: async (assessmentId: string, data: UpdateAssessmentRequest): Promise<Assessment> => {
-    const response = await apiClient.put<Assessment>(`/assessments/${assessmentId}`, data);
+    const response = await apiClient.put<Assessment>(`/v1/assessments/${assessmentId}`, data);
+    return response.data;
+  },
+
+  exportAssessment: async (assessmentId: string): Promise<Blob> => {
+    const response = await apiClient.get(`/v1/assessments/${assessmentId}/export`, {
+      responseType: 'blob',
+    });
     return response.data;
   },
 };

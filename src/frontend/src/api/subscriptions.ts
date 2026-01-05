@@ -22,7 +22,7 @@ export interface CreateSubscriptionRequest {
 export const subscriptionsApi = {
   getCurrentSubscription: async (): Promise<Subscription | null> => {
     try {
-      const response = await apiClient.get<Subscription>('/subscriptions');
+      const response = await apiClient.get<Subscription>('/v1/subscriptions');
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -33,12 +33,12 @@ export const subscriptionsApi = {
   },
 
   createSubscription: async (data: CreateSubscriptionRequest): Promise<Subscription> => {
-    const response = await apiClient.post<Subscription>('/subscriptions', data);
+    const response = await apiClient.post<Subscription>('/v1/subscriptions', data);
     return response.data;
   },
 
   cancelSubscription: async (): Promise<Subscription> => {
-    const response = await apiClient.post<Subscription>('/subscriptions/cancel');
+    const response = await apiClient.post<Subscription>('/v1/subscriptions/cancel');
     return response.data;
   },
 };
