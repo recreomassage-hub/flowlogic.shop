@@ -5,10 +5,9 @@ const getApiBaseUrl = () => {
   // 1. Приоритет - переменная из Vercel (которую мы добавили: VITE_API_URL)
   if (import.meta.env.VITE_API_URL) {
     // Убираем /v1 из конца, если он есть (пути уже содержат /v1)
-    let url = import.meta.env.VITE_API_URL;
-    if (url.endsWith('/v1')) {
-      url = url.slice(0, -3); // Убираем '/v1'
-    }
+    let url = String(import.meta.env.VITE_API_URL).trim();
+    // Убираем trailing slash и /v1 если есть
+    url = url.replace(/\/v1\/?$/, ''); // Убирает '/v1' или '/v1/'
     return url;
   }
   
