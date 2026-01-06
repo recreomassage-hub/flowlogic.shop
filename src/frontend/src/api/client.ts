@@ -4,7 +4,12 @@ import axios from 'axios';
 const getApiBaseUrl = () => {
   // 1. Приоритет - переменная из Vercel (которую мы добавили: VITE_API_URL)
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    // Убираем /v1 из конца, если он есть (пути уже содержат /v1)
+    let url = import.meta.env.VITE_API_URL;
+    if (url.endsWith('/v1')) {
+      url = url.slice(0, -3); // Убираем '/v1'
+    }
+    return url;
   }
   
   // 2. Если мы в режиме разработки (npm run dev)
