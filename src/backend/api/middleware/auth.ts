@@ -34,23 +34,31 @@ export async function authenticateToken(
   next: NextFunction
 ): Promise<void> {
   try {
+    console.log('[authenticateToken] Starting authentication for path:', req.path);
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
+      console.log('[authenticateToken] No token provided');
       res.status(401).json({ error: 'Unauthorized: No token provided' });
       return;
     }
 
+    console.log('[authenticateToken] Verifying token...');
     const payload = await getVerifier().verify(token);
+    console.log('[authenticateToken] Token verified, user sub:', payload.sub);
+    
     req.user = {
       sub: payload.sub,
       email: (payload.email || payload.username || '') as string,
       'cognito:username': (payload['cognito:username'] || payload.username || payload.sub) as string,
     };
 
+    console.log('[authenticateToken] Authentication successful, calling next()');
     next();
   } catch (error) {
+    console.error('[authenticateToken] ERROR:', error);
+    console.error('[authenticateToken] Error stack:', error instanceof Error ? error.stack : 'No stack');
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 }

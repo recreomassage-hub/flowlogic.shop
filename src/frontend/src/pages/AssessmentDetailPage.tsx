@@ -29,6 +29,18 @@ export function AssessmentDetailPage() {
     setExporting(true);
     try {
       const blob = await assessmentsApi.exportAssessment(id);
+      
+      // Validate blob
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty PDF received');
+      }
+      
+      // Check if blob is actually PDF
+      const blobType = blob.type || 'application/pdf';
+      if (!blobType.includes('pdf') && !blobType.includes('octet-stream')) {
+        console.warn('Unexpected blob type:', blobType);
+      }
+      
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -39,9 +51,10 @@ export function AssessmentDetailPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to export PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to export PDF. Please try again.';
+      alert(errorMessage);
     } finally {
       setExporting(false);
     }

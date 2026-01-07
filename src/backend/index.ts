@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import serverless from 'serverless-http';
 import cors from 'cors';
 import authRoutes from './api/routes/authRoutes';
@@ -21,6 +21,18 @@ app.use(
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Request logging middleware (для диагностики)
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+    query: req.query,
+    body: req.method === 'POST' ? req.body : undefined,
+    headers: {
+      authorization: req.headers.authorization ? 'Bearer ***' : 'missing',
+    },
+  });
+  next();
+});
 
 // Root endpoint
 app.get('/', (_req: Request, res: Response) => {
@@ -77,7 +89,19 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Export for serverless
-export const handler = serverless(app);
+export const handler = serverless(app, {
+  binary: ['application/pdf', 'image/*'],
+  request: (request: any, event: any, _context: any) => {
+    // Логирование входящего запроса
+    console.log('=== INCOMING REQUEST ===');
+    console.log('Event:', JSON.stringify(event, null, 2));
+    console.log('Path:', event.path);
+    console.log('Method:', event.httpMethod);
+    console.log('Headers:', JSON.stringify(event.headers, null, 2));
+    console.log('Body:', event.body);
+    return request;
+  },
+});
 
 // For local development
 if (require.main === module) {

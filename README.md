@@ -50,10 +50,19 @@ See [Deployment Guide](docs/deployment_guide.md) for detailed instructions.
 
 ## 📚 Documentation
 
+### For Users
 - **[User Manual](docs/user_manual.md)** - Руководство пользователя
+
+### For Developers
+- **[Spec-Driven Workflow Guide](docs/planning/spec_driven_workflow_guide.md)** - Полное руководство по Spec-Driven Development
+- **[Migration Guide](docs/planning/migration_to_spec_driven.md)** - План миграции на Spec-Driven
+- **[Contributing Guide](CONTRIBUTING.md)** - Как вносить вклад в проект
+- **[Developer Guide](docs/developer_guide.md)** - Руководство для разработчиков
+- **[Constitution](.specify/constitution.md)** - Технические стандарты проекта
+
+### For DevOps
 - **[API Documentation](docs/api_documentation.md)** - Полная документация API
 - **[Deployment Guide](docs/deployment_guide.md)** - Руководство по развертыванию
-- **[Developer Guide](docs/developer_guide.md)** - Руководство для разработчиков
 - **[Troubleshooting](docs/troubleshooting.md)** - Решение проблем
 
 ---
@@ -231,11 +240,35 @@ See [Test Plan](docs/testing/test_plan.md) for detailed testing information.
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
+### Development Workflow
+
+Мы используем **Spec-Driven Development** для всех новых фич и изменений.
+
+**Процесс:**
+1. `/specify` → Создать спецификацию фичи
+2. `/clarify` → Уточнить неясные моменты (если нужно)
+3. `/plan` → Создать технический план
+4. `/tasks` → Разбить на задачи
+5. `/implement` → Реализовать task-by-task
+
+**Документация:**
+- [Spec-Driven Workflow Guide](docs/planning/spec_driven_workflow_guide.md) - Полное руководство
+- [Migration Guide](docs/planning/migration_to_spec_driven.md) - План миграции
+- [Constitution](.specify/constitution.md) - Технические стандарты
+
+**Для существующих фич:**
+- При изменении существующей фичи → обновить/создать ретроспективную spec
+- См. `.specify/features/` для существующих спецификаций
+
+**Быстрый старт:**
+```bash
+# Для новой фичи
+/specify
+Feature: {название}
+REQUIREMENTS: {требования}
+
+# Затем следуйте workflow guide
+```
 
 See [Developer Guide](docs/developer_guide.md) for detailed contribution guidelines.
 

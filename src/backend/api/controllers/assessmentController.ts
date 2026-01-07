@@ -69,12 +69,15 @@ export async function getAssessments(req: AuthRequest, res: Response): Promise<v
  */
 export async function createAssessment(req: AuthRequest, res: Response): Promise<void> {
   try {
+    console.log('[createAssessment] Starting, user:', req.user?.sub);
     if (!req.user) {
+      console.log('[createAssessment] No user found');
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     const { test_id } = req.body;
+    console.log('[createAssessment] test_id:', test_id);
 
     if (!test_id || typeof test_id !== 'number' || test_id < 1 || test_id > 15) {
       res.status(400).json({
@@ -84,10 +87,44 @@ export async function createAssessment(req: AuthRequest, res: Response): Promise
       return;
     }
 
-    const user = await UserModel.getById(req.user.sub);
+    console.log('[createAssessment] Getting user:', req.user.sub);
+    let user = await UserModel.getById(req.user.sub);
+    
+    // If user not found by ID, try to find by email (for legacy users)
+    if (!user && req.user.email) {
+      console.log('[createAssessment] User not found by ID, trying email:', req.user.email);
+      user = await UserModel.getByEmail(req.user.email);
+      
+      // If found by email but user_id doesn't match, update user_id to match Cognito sub
+      if (user && user.user_id !== req.user.sub) {
+        console.log('[createAssessment] Updating user_id to match Cognito sub');
+        // Note: This is a workaround. In production, you should migrate all users.
+        // For now, we'll create a new user record with the correct user_id
+        const newUser = await UserModel.create({
+          user_id: req.user.sub,
+          email: user.email,
+          name: user.name,
+          tier: user.tier,
+          wellness_disclaimer_accepted: user.wellness_disclaimer_accepted,
+          wellness_disclaimer_accepted_at: user.wellness_disclaimer_accepted_at,
+        });
+        user = newUser;
+      }
+    }
+    
+    // If still not found, create user from Cognito data
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
+      console.log('[createAssessment] User not found, creating from Cognito data');
+      user = await UserModel.create({
+        user_id: req.user.sub,
+        email: req.user.email,
+        tier: 'free',
+        wellness_disclaimer_accepted: false, // Will need to accept on next login
+        wellness_disclaimer_accepted_at: new Date().toISOString(),
+      });
+      console.log('[createAssessment] User created:', user.user_id);
+    } else {
+      console.log('[createAssessment] User found:', user.user_id);
     }
 
     // Check tier limits (simplified - should check daily/monthly limits)
@@ -103,6 +140,7 @@ export async function createAssessment(req: AuthRequest, res: Response): Promise
     }
 
     // Create assessment
+    console.log('[createAssessment] Creating assessment...');
     const assessmentId = uuidv4();
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -118,22 +156,31 @@ export async function createAssessment(req: AuthRequest, res: Response): Promise
       month_key: monthKey,
     });
 
+    console.log('[createAssessment] Assessment created:', assessment.assessment_id);
+    
     // Generate presigned URL for video upload
+    console.log('[createAssessment] Generating presigned URL...');
     const videoKey = `assessments/${user.user_id}/${assessmentId}/video.mp4`;
     const uploadUrl = await getPresignedUrl(videoKey, 'putObject', 3600); // 1 hour expiry
+    console.log('[createAssessment] Presigned URL generated');
 
     // Update assessment with video URL placeholder
+    console.log('[createAssessment] Updating assessment with video URL...');
     await AssessmentModel.update(user.user_id, assessmentId, {
       video_url: `s3://${S3_CONFIG.bucketName}/${videoKey}`,
     });
+    console.log('[createAssessment] Assessment updated');
 
+    console.log('[createAssessment] Sending response');
     res.status(201).json({
       assessment_id: assessment.assessment_id,
       upload_url: uploadUrl,
       expires_in: 3600,
     });
+    console.log('[createAssessment] Response sent');
   } catch (error) {
-    console.error('Create assessment error:', error);
+    console.error('[createAssessment] ERROR:', error);
+    console.error('[createAssessment] Error stack:', error instanceof Error ? error.stack : 'No stack');
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to create assessment',
@@ -288,19 +335,39 @@ export async function exportAssessment(req: AuthRequest, res: Response): Promise
     }
 
     // Generate PDF
-    const pdfBuffer = await generateAssessmentPDF(assessment, user);
+    let pdfBuffer: Buffer;
+    try {
+      pdfBuffer = await generateAssessmentPDF(assessment, user);
+      
+      // Validate PDF buffer
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('Generated PDF is empty');
+      }
+      
+      // Check PDF header (should start with %PDF)
+      const pdfHeader = pdfBuffer.toString('latin1', 0, 4);
+      if (pdfHeader !== '%PDF') {
+        console.error('Invalid PDF header:', pdfHeader);
+        throw new Error('Generated PDF is invalid');
+      }
+    } catch (error: any) {
+      console.error('PDF generation error:', error);
+      throw new Error(`Failed to generate PDF: ${error.message}`);
+    }
 
     // Generate filename
-    const dateStr = new Date(assessment.created_at).toISOString().split('T')[0];
-    const testNameSlug = assessment.test_name.toLowerCase().replace(/\s+/g, '-');
+    const dateStr = assessment.created_at 
+      ? new Date(assessment.created_at).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    const testNameSlug = (assessment.test_name || 'assessment').toLowerCase().replace(/\s+/g, '-');
     const filename = `assessment-${testNameSlug}-${dateStr}.pdf`;
 
     // Set response headers
-    res.setHeader('Content-Type', 'application/pdf');
+    res.contentType('application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', pdfBuffer.length.toString());
 
-    // Send PDF
+    // Send PDF buffer
     res.status(200).send(pdfBuffer);
   } catch (error) {
     console.error('Export assessment error:', error);

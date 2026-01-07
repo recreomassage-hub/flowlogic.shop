@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand, ConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { SignUpCommand, InitiateAuthCommand, AuthFlowType, AdminConfirmSignUpCommand, ConfirmSignUpCommand, AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { cognitoClient, COGNITO_CONFIG } from '../../config/cognito';
 import { UserModel, User } from '../../db/models/User';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Register a new user
@@ -60,10 +59,21 @@ export async function register(req: Request, res: Response): Promise<void> {
       await cognitoClient.send(confirmCommand);
     }
 
-    // Create user in DynamoDB
-    const userId = uuidv4();
+    // Get Cognito user to get the sub (user_id)
+    const getUserCommand = new AdminGetUserCommand({
+      UserPoolId: COGNITO_CONFIG.userPoolId,
+      Username: email,
+    });
+    const cognitoUser = await cognitoClient.send(getUserCommand);
+    const cognitoSub = cognitoUser.UserAttributes?.find(attr => attr.Name === 'sub')?.Value;
+    
+    if (!cognitoSub) {
+      throw new Error('Failed to get Cognito user sub');
+    }
+
+    // Create user in DynamoDB using Cognito sub as user_id
     const user: User = await UserModel.create({
-      user_id: userId,
+      user_id: cognitoSub, // Use Cognito sub as user_id
       email,
       name,
       tier: 'free',

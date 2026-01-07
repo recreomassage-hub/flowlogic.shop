@@ -44,8 +44,21 @@ export const assessmentsApi = {
   },
 
   createAssessment: async (data: CreateAssessmentRequest): Promise<CreateAssessmentResponse> => {
-    const response = await apiClient.post<CreateAssessmentResponse>('/v1/assessments', data);
-    return response.data;
+    try {
+      const response = await apiClient.post<CreateAssessmentResponse>('/v1/assessments', data);
+      return response.data;
+    } catch (error: any) {
+      // Дополнительная диагностика
+      console.error('Create assessment error details:', {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        fullURL: error.config?.baseURL + error.config?.url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      });
+      throw error;
+    }
   },
 
   getAssessment: async (assessmentId: string): Promise<Assessment> => {
