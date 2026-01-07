@@ -28,7 +28,7 @@
     "@aws-sdk/client-eventbridge": "^3.490.0",
     "@aws-sdk/client-s3": "^3.490.0",
     "@aws-sdk/client-sqs": "^3.490.0",
-    "@aws-sdk/lib-dynamodb": "^3.490.0",
+    "@aws-sdk/lib-dynamodb": "^3.964.0",
     "@aws-sdk/s3-request-presigner": "^3.490.0",
     "@types/cors": "^2.8.19",
     "@types/pdfkit": "^0.13.9",
