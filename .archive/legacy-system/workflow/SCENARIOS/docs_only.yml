@@ -1,0 +1,73 @@
+# Docs Only - Только документация (PRD + Architecture)
+# Конфигурация маршрута для LLM-OS core-движка
+
+name: Docs Only
+description: "Быстрое создание только документации (PRD + Architecture) без кода"
+
+# Роли, которые будут использоваться
+roles:
+  - ANALYST
+  - ARCHITECT
+  - DOCS
+  - OWNER
+
+# Роли, которые будут пропущены
+skip_roles:
+  - PM
+  - BACKEND_DEV
+  - FRONTEND_DEV
+  - INFRA_DEVOPS
+  - QA
+  - SECURITY
+
+# Глубина проработки
+depth:
+  ANALYST:
+    requirements: full
+    user_stories: medium
+    glossary: light
+    qna: medium
+  
+  ARCHITECT:
+    c4_diagrams: full
+    db_schema: full
+    api_spec: full
+    tech_stack: full
+    adr: light
+  
+  DOCS:
+    user_manual: light
+    api_docs: full
+    deployment_guide: light
+    troubleshooting: light
+
+# Ожидаемые артефакты
+outputs:
+  requirements:
+    - docs/requirements/PRD.md
+    - docs/requirements/user_stories.md
+  
+  architecture:
+    - docs/architecture/c4_diagrams.md
+    - docs/architecture/db_schema.md
+    - docs/architecture/api_spec.yaml
+    - docs/architecture/tech_stack.md
+  
+  documentation:
+    - docs/api_documentation.md
+
+# Параметры
+parameters:
+  time_to_market: fast
+  complexity_budget: low
+  quality_gate: light
+  owner_approval: true
+
+# Ограничения
+constraints:
+  max_story_points: 50
+  require_security_review: false
+  require_documentation: true
+
+
+

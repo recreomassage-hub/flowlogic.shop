@@ -1,0 +1,231 @@
+#!/bin/bash
+# Aliases for Flow Logic project scripts
+# 
+# Installation:
+#   Option 1 (recommended): Run ./install-aliases.sh
+#   Option 2 (manual): Add to your .bashrc or .zshrc:
+#     source "/path/to/project/.aliases"
+#
+# Usage in current session:
+#   source .aliases
+
+# Get project root directory (where this file is located)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Issue Tracking - используем официальный Beads если установлен, иначе bd.sh
+_bd() {
+    # Проверяем, установлен ли официальный Beads (из npm, не наш локальный скрипт)
+    BD_CMD=$(command -v bd 2>/dev/null)
+    BD_SCRIPT="$PROJECT_ROOT/scripts/bd.sh"
+    
+    # Если bd найден и это не наш локальный скрипт - используем официальный Beads
+    if [ -n "$BD_CMD" ] && [ "$BD_CMD" != "$BD_SCRIPT" ] && [[ "$BD_CMD" != *"/scripts/bd.sh"* ]]; then
+        # Используем официальный Beads (из npm)
+        command bd "$@"
+    else
+        # Используем локальный bd.sh
+        "$BD_SCRIPT" "$@"
+    fi
+}
+_bd_ready() {
+    _bd ready "$@"
+}
+_bd_ready_json() {
+    _bd ready --json "$@"
+}
+_bd_show() {
+    _bd show "$@"
+}
+_bd_start() {
+    _bd start "$@"
+}
+_bd_complete() {
+    _bd complete "$@"
+}
+_bd_discover() {
+    _bd discover "$@"
+}
+_bd_create() {
+    _bd create "$@"
+}
+_bd_status() {
+    _bd status "$@"
+}
+
+# Status Management
+_status_gen() {
+    "$PROJECT_ROOT/scripts/generate-status.sh" "$@"
+}
+_status_read() {
+    cat "$PROJECT_ROOT/STATUS.md"
+}
+_status_view() {
+    cat "$PROJECT_ROOT/STATUS.md"
+}
+
+# Deployment
+_post_deploy() {
+    "$PROJECT_ROOT/scripts/post_deploy.sh" "$@"
+}
+_smoke_tests() {
+    "$PROJECT_ROOT/scripts/smoke_tests.sh" "$@"
+}
+
+# Legacy LLM-OS (for scenarios only)
+_llmos_setup() {
+    "$PROJECT_ROOT/setup_workflow.sh" "$@"
+}
+_llmos_launch() {
+    "$PROJECT_ROOT/launch-llmos.sh" "$@"
+}
+_llmos_monitor() {
+    "$PROJECT_ROOT/monitor.sh" "$@"
+}
+_llmos_step() {
+    "$PROJECT_ROOT/step.sh" "$@"
+}
+_llmos_report() {
+    "$PROJECT_ROOT/generate_report.sh" "$@"
+}
+
+# Feature Management (Legacy)
+_feature_new() {
+    "$PROJECT_ROOT/scripts/feature_new.sh" "$@"
+}
+_feature_impact() {
+    "$PROJECT_ROOT/scripts/feature_impact.sh" "$@"
+}
+_feature_flag() {
+    "$PROJECT_ROOT/scripts/feature_check_flag.sh" "$@"
+}
+
+# Scenario Management
+_quality_gate() {
+    "$PROJECT_ROOT/scripts/quality_gate.sh" "$@"
+}
+_rollback() {
+    "$PROJECT_ROOT/scripts/rollback_stage.sh" "$@"
+}
+_incident_detect() {
+    "$PROJECT_ROOT/scripts/incident_detector.sh" "$@"
+}
+
+# Utility Scripts
+_setup_precommit() {
+    "$PROJECT_ROOT/scripts/setup_pre_commit.sh" "$@"
+}
+_check_ssm() {
+    "$PROJECT_ROOT/scripts/check_ssm_params.sh" "$@"
+}
+_setup_monitoring() {
+    "$PROJECT_ROOT/scripts/setup_monitoring.sh" "$@"
+}
+_setup_iam() {
+    "$PROJECT_ROOT/infra/iam/setup.sh" "$@"
+}
+
+# Quick shortcuts
+_issues() {
+    cat "$PROJECT_ROOT/.beads/issues.jsonl"
+}
+_issues_ready() {
+    _bd ready "$@"
+}
+_issues_active() {
+    _issues | jq 'select(.status == "in_progress")'
+}
+_issues_done() {
+    _issues | jq 'select(.status == "done")'
+}
+
+# Helper functions
+_bd_next() {
+    # Get next ready issue ID
+    "$PROJECT_ROOT/scripts/bd.sh" ready --json | jq -r '.[0].id // empty'
+}
+
+_bd_start_next() {
+    # Start working on next ready issue
+    local next_id=$(_bd_next)
+    if [ -n "$next_id" ]; then
+        "$PROJECT_ROOT/scripts/bd.sh" start "$next_id"
+        echo "✅ Started: $next_id"
+    else
+        echo "❌ No ready issues found"
+    fi
+}
+
+_bd_finish() {
+    # Complete issue and update status
+    local issue_id="$1"
+    if [ -z "$issue_id" ]; then
+        echo "Usage: bd-finish {issue-id}"
+        return 1
+    fi
+    "$PROJECT_ROOT/scripts/bd.sh" complete "$issue_id" && "$PROJECT_ROOT/scripts/generate-status.sh"
+    echo "✅ Completed: $issue_id"
+}
+
+_bd_workflow() {
+    # Complete workflow: start next, complete, update status
+    local issue_id="$1"
+    if [ -z "$issue_id" ]; then
+        issue_id=$(_bd_next)
+        if [ -z "$issue_id" ]; then
+            echo "❌ No ready issues found"
+            return 1
+        fi
+    fi
+    "$PROJECT_ROOT/scripts/bd.sh" start "$issue_id"
+    echo "✅ Started: $issue_id"
+    echo "💡 When done, run: bd-finish $issue_id"
+}
+
+# Create aliases with dashes (user-friendly names)
+alias bd="_bd"
+alias bd-ready="_bd_ready"
+alias bd-ready-json="_bd_ready_json"
+alias bd-show="_bd_show"
+alias bd-start="_bd_start"
+alias bd-complete="_bd_complete"
+alias bd-discover="_bd_discover"
+alias bd-create="_bd_create"
+alias bd-status="_bd_status"
+alias bd-next="_bd_next"
+alias bd-start-next="_bd_start_next"
+alias bd-finish="_bd_finish"
+alias bd-workflow="_bd_workflow"
+
+alias status-gen="_status_gen"
+alias status-read="_status_read"
+alias status-view="_status_view"
+
+alias post-deploy="_post_deploy"
+alias smoke-tests="_smoke_tests"
+
+alias llmos-setup="_llmos_setup"
+alias llmos-launch="_llmos_launch"
+alias llmos-monitor="_llmos_monitor"
+alias llmos-step="_llmos_step"
+alias llmos-report="_llmos_report"
+
+alias feature-new="_feature_new"
+alias feature-impact="_feature_impact"
+alias feature-flag="_feature_flag"
+
+alias quality-gate="_quality_gate"
+alias rollback="_rollback"
+alias incident-detect="_incident_detect"
+
+alias setup-precommit="_setup_precommit"
+alias check-ssm="_check_ssm"
+alias setup-monitoring="_setup_monitoring"
+alias setup-iam="_setup_iam"
+
+alias issues="_issues"
+alias issues-ready="_issues_ready"
+alias issues-active="_issues_active"
+alias issues-done="_issues_done"
+
+# Export PROJECT_ROOT for use in other scripts
+export PROJECT_ROOT

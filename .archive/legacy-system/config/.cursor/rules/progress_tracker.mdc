@@ -1,0 +1,9 @@
+// Автоматически подсчитывает прогресс
+when: fileMatches("WORKFLOW_STATE.md") && contains("выполнено:")
+rule: |
+  Найди все чекбоксы в текущем этапе:
+  - total = количество `[ ]` и `[x]`
+  - done = количество `[x]`
+  - progress = (done / total * 100)
+  
+  Предложи обновить: "выполнено: {done}/{total} ({progress}%)"

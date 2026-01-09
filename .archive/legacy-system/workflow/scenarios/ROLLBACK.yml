@@ -1,0 +1,37 @@
+# S6: ROLLBACK - Контролируемый откат этапа
+scenario: ROLLBACK
+
+phases:
+  IDENTIFY:
+    description: "Определение точки отката"
+    allowed_actions:
+      - identify_rollback_point
+      - create_backup
+      - analyze_impact
+    auto_scripts: []
+    next_phase: EXECUTE
+    active_role: OWNER
+
+  EXECUTE:
+    description: "Выполнение отката"
+    allowed_actions:
+      - revert_code
+      - update_state
+      - disable_features
+    auto_scripts:
+      - scripts/rollback_stage.sh
+    next_phase: VERIFY
+    active_role: SYSTEM
+
+  VERIFY:
+    description: "Проверка после отката"
+    allowed_actions:
+      - verify_rollback
+      - run_tests
+      - check_state
+    auto_scripts: []
+    next_phase: null
+    active_role: QA
+
+
+

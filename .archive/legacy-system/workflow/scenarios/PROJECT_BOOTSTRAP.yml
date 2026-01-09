@@ -1,0 +1,54 @@
+# S1: PROJECT_BOOTSTRAP - Старт проекта
+scenario: PROJECT_BOOTSTRAP
+
+phases:
+  INITIALIZATION:
+    description: "Проверка структуры проекта, инициализация базовых файлов"
+    allowed_actions:
+      - read_config
+      - generate_structure
+      - create_artifacts
+    auto_scripts:
+      - scripts/setup_workflow.sh
+    next_phase: REQUIREMENTS
+    active_role: ANALYST
+
+  REQUIREMENTS:
+    description: "Создание требований (PRD, User Stories, Glossary)"
+    allowed_actions:
+      - read_config
+      - create_requirements
+      - update_docs
+    auto_scripts: []
+    next_phase: ARCHITECTURE
+    active_role: ANALYST
+
+  ARCHITECTURE:
+    description: "Проектирование архитектуры"
+    allowed_actions:
+      - read_requirements
+      - create_architecture
+      - update_docs
+    auto_scripts: []
+    next_phase: SETUP
+    active_role: ARCHITECT
+
+  SETUP:
+    description: "Настройка инфраструктуры"
+    allowed_actions:
+      - setup_infrastructure
+      - create_configs
+      - update_docs
+    auto_scripts: []
+    next_phase: READY
+    active_role: INFRA_DEVOPS
+
+  READY:
+    description: "Проект готов к разработке (терминальная фаза)"
+    allowed_actions:
+      - read_config
+      - start_feature
+    auto_scripts: []
+    next_phase: null
+    active_role: OWNER
+

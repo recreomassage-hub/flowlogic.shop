@@ -1,0 +1,13 @@
+// Правило для автоматического обновления даты в WORKFLOW_STATE.md
+when: fileChanged("WORKFLOW_STATE.md") && contains("last_update:")
+rule: |
+  При каждом обновлении WORKFLOW_STATE.md:
+  
+  1. Найди строку с "last_update:"
+  2. Обнови дату на текущую:
+     - Старое: last_update: 2024-01-15T10:00:00Z
+     - Новое: last_update: {{current_date_iso}}
+  
+  3. Также обнови "обновлено:" в текущем этапе
+  
+  Комментарий: "✅ Автоматически обновлена дата последнего изменения"

@@ -1,0 +1,8 @@
+// Правило для проверки WORKFLOW_STATE.md
+when: fileMatches("WORKFLOW_STATE.md")
+rule: |
+  Перед изменением WORKFLOW_STATE.md:
+  1. Убедись что current_stage корректен
+  2. Проверь что все обязательные поля заполнены
+  3. Обнови last_update
+  4. Если меняешь status на DONE - укажи next_role
