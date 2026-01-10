@@ -47,3 +47,5 @@ artifacts/
 Для постоянного хранения планов используй `docs/planning/` или `docs/architecture/`.
 
 
+
+

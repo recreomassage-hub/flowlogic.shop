@@ -6,68 +6,83 @@
 
 ## 🎯 DEVELOPMENT WORKFLOW
 
-Мы используем **Spec-Driven Development** для обеспечения качества и предсказуемости разработки.
+Мы используем **OpenSpec + Beads** для обеспечения качества и предсказуемости разработки.
 
 ### Для новых фич
 
-**Полный цикл Spec-Driven:**
+**Трехэтапный процесс OpenSpec:**
 
-1. **SPECIFY** - Создать спецификацию
+1. **PROPOSAL** - Создать предложение об изменении
    ```
-   /specify
+   /openspec-proposal
    
-   Feature: {название фичи}
+   Change: {название изменения}
    
-   REQUIREMENTS:
-   {детальные требования}
-   
-   SUCCESS CRITERIA:
-   {критерии успеха}
+   Description: {описание изменения}
    ```
-   Результат: `.specify/features/{name}/spec.md`
+   Результат: `openspec/changes/{change-id}/proposal.md`, `tasks.md`, `specs/**/spec.md`
 
-2. **CLARIFY** - Уточнить неясности (если нужно)
+2. **APPLY** - Реализовать изменения (после approval)
    ```
-   /clarify
+   /openspec-apply
    
-   @spec.md
-   
-   Review and clarify:
-   1. {вопрос 1}
+   @proposal.md @tasks.md @specs/**/spec.md
    ```
-   Результат: `.specify/features/{name}/clarifications.md`
+   Реализация по tasks.md
 
-3. **PLAN** - Создать технический план
+3. **TO-BEADS** - Конвертировать tasks.md в Beads issues (опционально)
    ```
-   /plan
+   /openspec-to-beads
    
-   @constitution.md @spec.md @clarifications.md
-   
-   Create technical plan
+   {change-id}
    ```
-   Результат: `.specify/features/{name}/plan.md`
+   Результат: Задачи в `.beads/issues.jsonl` (структурированные для Issue Tracking)
 
-4. **TASKS** - Разбить на задачи
+4. **ARCHIVE** - Архивировать завершенное изменение
    ```
-   /tasks
+   /openspec-archive
    
-   @constitution.md @spec.md @plan.md
-   
-   Break down into tasks
+   {change-id}
    ```
-   Результат: `.specify/features/{name}/tasks.md`
+   Результат: `openspec/changes/archive/{change-id}/`
 
-5. **IMPLEMENT** - Реализовать задачу
-   ```
-   /implement
-   
-   @constitution.md @spec.md @plan.md @tasks.md
-   
-   Task: {номер}
-   ```
-   Реализация task-by-task
+**Документация:** [OpenSpec AGENTS.md](openspec/AGENTS.md)
 
-**Документация:** [Spec-Driven Workflow Guide](docs/planning/spec_driven_workflow_guide.md)
+### Для реализации (Execution Phase)
+
+**Issue-Based Tracking (Beads):**
+
+После создания задач через `/openspec-to-beads`, используйте Beads CLI для управления выполнением:
+
+```bash
+# Убедитесь, что Beads установлен
+npm install -g @beads/bd@latest
+
+# Начало сессии - найти работу
+bd ready              # Показать готовые задачи
+bd ready --json       # JSON формат для агентов
+
+# Во время работы
+bd start {issue-id}   # Начать работу над задачей
+bd complete {issue-id} # Завершить задачу
+
+# Обнаружение проблем
+bd discover "Description" --from {issue-id}
+
+# Обновить статус
+./scripts/generate-status.sh       # Генерирует STATUS.md
+```
+
+**Правила работы с issues:**
+- Одна задача на сессию (избегать перегрузки контекста)
+- Всегда логировать обнаруженные проблемы (не терять задачи)
+- Обновлять статус перед завершением сессии
+- Проверять блокировки перед началом: `bd show {issue-id}`
+
+**STATUS.md** - ваш "якорь" между сессиями:
+- Автоматически генерируется из `.beads/issues.jsonl`
+- Показывает: активные задачи, завершенные сегодня, готовые к работе
+- Обновляется командой: `./scripts/generate-status.sh`
 
 ### Для изменений в существующих фичах
 
@@ -85,19 +100,19 @@
 ```markdown
 # Изменение: Добавить OAuth login
 
-1. Обновить .specify/features/user-authentication/spec.md
-2. Создать tasks.md для OAuth интеграции
-3. Реализовать через /implement
+1. Создать proposal: /openspec-proposal
+   Change: add-oauth-login
+   Description: Add OAuth authentication support
+2. После approval реализовать через /openspec-apply
+3. Опционально: /openspec-to-beads add-oauth-login для конвертации в Beads issues
 ```
 
 ### Для рефакторингов
 
-**Большие рефакторинги (>10 файлов) без изменения функциональности:**
-- Использовать legacy PLAN/BUILD через `./llmos plan {task_name}`
-- См. `ROLES/02_architect.md` для деталей
-
-**Рефакторинги с добавлением функциональности:**
-- Использовать Spec-Driven workflow
+**Рефакторинги:**
+- Любые рефакторинги (с функциональностью или без) → использовать OpenSpec workflow
+- Создать proposal через `/openspec-proposal`
+- Указать тип: "refactor" в proposal.md
 
 ### Для багфиксов
 
@@ -114,12 +129,12 @@
 
 ### Технические стандарты
 
-Все стандарты определены в `.specify/constitution.md`:
+Все стандарты определены в `openspec/project.md`:
 
 - **Stack & Versions:** React 18+, Node.js 20+, TypeScript 5.3+
 - **Naming Conventions:** PascalCase для компонентов, camelCase для функций
 - **Architecture:** Business logic в services/, NO logic в components
-- **Library Rules:** Только разрешенные библиотеки (см. constitution)
+- **Library Rules:** Только разрешенные библиотеки (см. project.md)
 
 ### Обязательные требования
 
@@ -252,27 +267,29 @@ docs(spec-driven): update workflow guide
 
 ### Где что находится
 
-- **Spec-Driven Workflow:** `docs/planning/spec_driven_workflow_guide.md`
-- **Migration Guide:** `docs/planning/migration_to_spec_driven.md`
-- **Constitution:** `.specify/constitution.md`
-- **Feature Specs:** `.specify/features/{name}/spec.md`
+- **OpenSpec Workflow:** `openspec/AGENTS.md`
+- **Project Context:** `openspec/project.md`
+- **Active Changes:** `openspec/changes/` (proposals)
+- **Specifications:** `openspec/specs/` (current truth)
+- **Issue Tracking:** `STATUS.md` (human-readable), `.beads/issues.jsonl` (structured)
 - **API Docs:** `docs/api_documentation.md`
 - **Developer Guide:** `docs/developer_guide.md`
+- **Cheatsheet:** `CHEATSHEET.md` (quick reference)
 
 ### Обновление документации
 
-- При изменении фичи → обновить spec.md
-- При изменении API → обновить api_documentation.md
-- При изменении процесса → обновить workflow guide
+- При изменении фичи → создать/обновить proposal в `openspec/changes/{change-id}/`
+- При изменении API → обновить `docs/api_documentation.md`
+- При завершении изменения → заархивировать через `/openspec-archive`
 
 ---
 
 ## ❓ QUESTIONS?
 
-- **Workflow вопросы:** См. `docs/planning/spec_driven_workflow_guide.md`
-- **Технические вопросы:** См. `.specify/constitution.md`
-- **Process вопросы:** См. `docs/planning/migration_to_spec_driven.md`
-- **GitHub Issues:** [Create an issue](https://github.com/your-org/flowlogic-platform/issues)
+- **Workflow вопросы:** См. `openspec/AGENTS.md`
+- **Технические вопросы:** См. `openspec/project.md`
+- **Issue Tracking вопросы:** См. `CHEATSHEET.md`
+- **Quick Reference:** См. `CHEATSHEET.md`
 
 ---
 

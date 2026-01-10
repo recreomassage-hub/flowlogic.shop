@@ -1,6 +1,6 @@
-// .cursorrules - ЯДРО СИСТЕМЫ LLM-OS
-name: LLM-OS Orchestration System
-description: Операционная система для ИИ-агентов
+// .cursorrules - OpenSpec + Beads System
+name: OpenSpec + Beads Orchestration System
+description: Система для спецификаций и issue tracking через OpenSpec и Beads
 
 # =============== НАСТРОЙКА ПОВЕДЕНИЯ ===============
 behavior:
@@ -31,46 +31,49 @@ behavior:
     - Действие 2: [результат]
     
     📊 Обновление состояния:
-    - WORKFLOW_STATE.md: [что изменил]
+    - STATUS.md: [что изменил] (generated from Beads)
     - Git: [ветка/коммит]
 
 # =============== АРХИТЕКТУРНЫЕ ПРАВИЛА ===============
 architecture:
   stateRegisters:
-    ROM: "PROJECT_CONFIG.md"
-    RAM: "WORKFLOW_STATE.md"
-    SCENARIO: "SCENARIO_STATE.yml"
-    INSTRUCTION_SET: "ROLES/"
+    ROM: "openspec/project.md"
+    RAM: "STATUS.md"
+    INSTRUCTION_SET: "openspec/AGENTS.md"
     STORAGE: "docs/"
   
   processorCycle:
-    fetch: "Читает PROJECT_CONFIG.md + WORKFLOW_STATE.md + SCENARIO_STATE.yml"
-    decode: "Определяет роль из current_role и сценарий из SCENARIO_STATE.yml"
-    execute: "Выполняет инструкции из ROLES/{current_role}.md в рамках allowed_actions"
-    writeback: "Обновляет WORKFLOW_STATE.md + создает артефакты"
+    fetch: "Читает openspec/project.md + STATUS.md + openspec/AGENTS.md"
+    decode: "Определяет текущий контекст из openspec/project.md и active changes"
+    execute: "Выполняет инструкции из openspec/AGENTS.md в рамках OpenSpec workflow"
+    writeback: "Обновляет STATUS.md (через generate-status.sh) + создает артефакты"
 
-# =============== СЦЕНАРНЫЙ РЕЖИМ (NEW) ===============
-scenarioMode:
+# =============== OPENSPEC WORKFLOW ===============
+openspecWorkflow:
   enabled: true
-  stateFile: "SCENARIO_STATE.yml"
+  projectContext: "openspec/project.md"
+  agentsInstructions: "openspec/AGENTS.md"
   
   agentConstraints:
-    canChangeScenario: false        # Агенты НЕ могут менять сценарий
-    canChangePhase: false            # Агенты НЕ могут менять фазу
-    canRunScripts: false             # Агенты НЕ могут запускать скрипты
-    canOnlyExecute: true             # Агенты могут только выполнять allowed_actions
+    canChangeProposal: false         # Агенты НЕ могут изменять proposal после approval
+    canArchiveChange: false          # Агенты НЕ могут архивировать изменения (только после deployment)
+    canRunScripts: false             # Агенты НЕ могут запускать скрипты напрямую
+    canOnlyExecute: true             # Агенты могут только выполнять OpenSpec workflow
   
   allowedActions:
-    - read_config                    # Чтение конфигурации
-    - update_artifacts                # Обновление артефактов
-    - commit_changes                  # Коммит через step.sh
-    - run_tests                       # Запуск тестов
+    - read_project_context           # Чтение openspec/project.md
+    - create_proposal                # Создание proposal через /openspec-proposal
+    - apply_change                   # Реализация через /openspec-apply
+    - convert_to_beads               # Конвертация через /openspec-to-beads (опционально)
+    - update_status                  # Обновление STATUS.md через generate-status.sh
+    - commit_changes                 # Коммит изменений
+    - run_tests                      # Запуск тестов
   
   forbiddenActions:
-    - change_scenario                 # Изменение сценария
-    - change_phase                    # Изменение фазы
-    - run_scripts                     # Запуск скриптов напрямую
-    - improvise_process               # Импровизация процессов
+    - change_proposal_after_approval # Изменение proposal после approval
+    - archive_without_deployment     # Архивация без deployment
+    - run_scripts                    # Запуск скриптов напрямую
+    - improvise_process              # Импровизация процессов вне OpenSpec
 
 # =============== СТРОГИЕ ПРАВИЛА ===============
 rules:
@@ -79,45 +82,44 @@ rules:
     condition: "в начале любой сессии"
     action: |
       ПРЕЖДЕ ЧЕГО-ЛИБО:
-      1. Прочитать PROJECT_CONFIG.md
-      2. Прочитать WORKFLOW_STATE.md
-      3. Прочитать SCENARIO_STATE.yml
-      4. Определить current_role и current_scenario
-      5. Прочитать ROLES/{current_role}.md
-      6. Проверить allowed_actions в SCENARIO_STATE.yml
+      1. Прочитать openspec/project.md
+      2. Прочитать STATUS.md (если существует)
+      3. Проверить active changes в openspec/changes/
+      4. Прочитать openspec/AGENTS.md для инструкций
+      5. Проверить текущий контекст через openspec list
       
       Ответ начать с:
-      "✅ Контекст загружен. [Роль], [Сценарий], [Фаза], [Разрешенные действия]"
+      "✅ Контекст загружен. [OpenSpec active changes], [Ready tasks from Beads]"
   
-  - name: "Запрет изменения сценария"
-    pattern: ".*(изменить сценарий|change scenario|set scenario).*"
+  - name: "Запрет изменения proposal после approval"
+    pattern: ".*(изменить proposal|change proposal|edit proposal).*"
     action: |
-      ОШИБКА: Агент не может изменять сценарий.
-      Только системные события могут менять SCENARIO_STATE.yml.
-      Используй только allowed_actions из текущего сценария.
+      ОШИБКА: Агент не может изменять proposal после approval.
+      После approval используй только /openspec-apply для реализации.
+      Если нужны изменения - создай новый proposal.
   
   - name: "Запрет вежливости"
     pattern: "(?i)(как ии|конечно|извин|с удовольствием)"
     action: "УДАЛИТЬ эти фразы. Начать сразу с заголовка роли."
   
-  - name: "Атомарное обновление WORKFLOW_STATE"
-    pattern: ".*(выполнил|создал|завершил).*"
-    condition: "после любого действия"
+  - name: "Обновление STATUS.md через Beads"
+    pattern: ".*(выполнил|создал|завершил|complete|start).*"
+    condition: "после работы с задачами Beads"
     action: |
-      1. Открыть WORKFLOW_STATE.md
-      2. Найти текущий этап по current_stage
-      3. Обновить чекбоксы: [ ] → [x] задача @timestamp
-      4. Обновить счетчик: выполнено: X/Y
-      5. При необходимости изменить статус этапа
+      1. Если работал с Beads задачами - использовать bd complete {issue-id}
+      2. Обновить STATUS.md через ./scripts/generate-status.sh
+      3. Проверить что статус обновился корректно
+      4. Коммитить .beads/issues.jsonl вместе с кодом
   
-  - name: "Проверка allowed_actions"
-    pattern: ".*(запустить|вызвать|скрипт|script).*"
+  - name: "Проверка OpenSpec workflow"
+    pattern: ".*(создать proposal|реализовать|apply|archive).*"
     condition: "перед выполнением действия"
     action: |
-      Проверить SCENARIO_STATE.yml:
-      - Действие разрешено в allowed_actions?
-      - Если нет → ОШИБКА: Действие не разрешено в текущем сценарии
-      - Если да → Продолжить
+      Проверить OpenSpec workflow:
+      - Для новых фич - использовать /openspec-proposal
+      - После approval - использовать /openspec-apply
+      - После deployment - использовать /openspec-archive
+      - Следовать инструкциям из openspec/AGENTS.md
 
 # =============== ИКОНКИ ДЛЯ РОЛЕЙ ===============
 icons:
@@ -134,27 +136,28 @@ icons:
   QUALITY_AUDITOR: "🔍"
   DEPLOY_SUPERVISOR: "🎛️"
 
-# =============== SPEC-DRIVEN DEVELOPMENT ===============
-specDriven:
+# =============== OPENSPEC DEVELOPMENT ===============
+openspec:
   enabled: true
-  constitutionPath: ".specify/constitution.md"
-  featuresPath: ".specify/features/"
+  projectContext: "openspec/project.md"
+  changesPath: "openspec/changes/"
+  specsPath: "openspec/specs/"
   
   workflow:
-    - specify: "Создать спецификацию фичи в .specify/features/{name}/spec.md"
-    - clarify: "Уточнить неясные моменты в clarifications.md"
-    - plan: "Создать технический план в plan.md"
-    - tasks: "Разбить на атомарные задачи в tasks.md"
-    - implement: "Реализовать по плану task-by-task"
+    - proposal: "Создать proposal об изменении через /openspec-proposal"
+    - validate: "Валидация proposal через openspec validate {change-id} --strict"
+    - apply: "Реализация после approval через /openspec-apply"
+    - to_beads: "Конвертация tasks.md в Beads issues через /openspec-to-beads (опционально)"
+    - archive: "Архивация после deployment через /openspec-archive"
   
   rules:
-    - "ПЕРЕД любым кодом читай @constitution.md"
-    - "Для новых фич создавай spec.md в .specify/features/{name}/"
-    - "Реализуй ТОЛЬКО то, что в spec.md и plan.md"
-    - "НЕ добавляй фичи не из спецификации"
+    - "ПЕРЕД любым кодом читай openspec/project.md"
+    - "Для новых фич создавай proposal в openspec/changes/{change-id}/"
+    - "Реализуй ТОЛЬКО то, что в proposal.md и tasks.md"
+    - "НЕ добавляй фичи не из proposal"
     - "Спрашивай перед архитектурными решениями"
-    - "Следуй naming conventions из constitution"
-    - "Используй только разрешенные библиотеки"
+    - "Следуй naming conventions из openspec/project.md"
+    - "Используй только разрешенные библиотеки из openspec/project.md"
     - "Валидируй все входные данные через Zod"
   
   whenToUse:
@@ -169,42 +172,33 @@ specDriven:
     - "Миграции данных"
   
   whenNotToUse:
-    - "Мелкие багфиксы (1-2 файла, без изменений API)"
-    - "Горячие исправления (требуют быстрого деплоя)"
-    - "Текстовые изменения (без логики)"
-    - "Стилистические правки (CSS, форматирование)"
-  
-  legacyPlanBuild:
-    whenToUse:
-      - "Большие рефакторинги (>10 файлов) без изменения функциональности"
-      - "Миграции архитектуры (без новых фич)"
-      - "Оптимизация кода (без изменения API)"
-    command: "./llmos plan {task_name} → artifacts/PLAN_{task}_plan.md"
+    - "Багфиксы (restore intended behavior)"
+    - "Типографические ошибки, форматирование, комментарии"
+    - "Обновления зависимостей (non-breaking)"
+    - "Изменения конфигурации"
+    - "Тесты для существующего поведения"
   
   commands:
-    idea: "Начать новую фичу: @.cursor/commands/idea.md"
-    specify: "Создать спецификацию: @.cursor/commands/specify.md"
-    clarify: "Уточнить спецификацию: @.cursor/commands/clarify.md"
-    plan: "Создать план: @.cursor/commands/plan.md"
-    tasks: "Разбить на задачи: @.cursor/commands/tasks.md"
-    implement: "Реализовать задачу: @.cursor/commands/implement.md"
-    qa: "Запустить QA проверку: @.cursor/commands/qa.md"
-    validate: "Проверить quality gates: @.cursor/commands/validate.md"
+    proposal: "Создать proposal: @.cursor/commands/openspec-proposal.md"
+    apply: "Реализовать изменения: @.cursor/commands/openspec-apply.md"
+    to_beads: "Конвертировать в Beads: @.cursor/commands/openspec-to-beads.md"
+    archive: "Заархивировать: @.cursor/commands/openspec-archive.md"
+    validate: "Валидация: openspec validate {change-id} --strict"
 
 # =============== ТРИГГЕРЫ ===============
 triggers:
   - when: "файл изменен"
-    pattern: "WORKFLOW_STATE.md"
-    action: "Автоматически обновить last_update"
+    pattern: "STATUS.md|\.beads/issues\.jsonl"
+    action: "Проверить что STATUS.md актуален через generate-status.sh"
   
   - when: "deploy failure"
     pattern: ".*deploy.*fail.*"
-    action: "Автоматически переключить на INCIDENT_RECOVERY:FREEZE"
+    action: "Создать proposal для investigation через /openspec-proposal"
   
   - when: "quality gate fail"
     pattern: ".*quality.*gate.*fail.*"
-    action: "Автоматически переключить на ROLLBACK:IDENTIFY"
+    action: "Создать proposal для rollback через /openspec-proposal"
   
   - when: "новая фича начинается"
-    pattern: ".*idea|specify|spec-driven|new feature.*"
-    action: "Проверить наличие .specify/features/{name}/spec.md, если нет - предложить создать через /idea или /specify"
+    pattern: ".*proposal|openspec|new feature.*"
+    action: "Проверить наличие openspec/changes/{change-id}/proposal.md, если нет - предложить создать через /openspec-proposal"

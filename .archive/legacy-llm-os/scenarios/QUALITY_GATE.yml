@@ -1,0 +1,28 @@
+# S5: QUALITY_GATE - Проверка качества перед передачей этапа
+scenario: QUALITY_GATE
+
+phases:
+  AUDIT:
+    description: "Аудит артефактов текущего этапа"
+    allowed_actions:
+      - read_artifacts
+      - evaluate_quality
+      - generate_report
+    auto_scripts:
+      - scripts/quality_gate.sh
+    next_phase: VERDICT
+    active_role: QUALITY_AUDITOR
+
+  VERDICT:
+    description: "Вердикт (PASS/FAIL)"
+    allowed_actions:
+      - read_audit_report
+      - set_verdict
+      - update_state
+    auto_scripts: []
+    next_phase: null
+    active_role: QUALITY_AUDITOR
+
+
+
+

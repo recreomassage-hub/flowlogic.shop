@@ -30,10 +30,35 @@ echo ""
 
 # 2. Проверка на реальные токены и ключи
 echo "2. Проверка на реальные токены и ключи..."
+# Ищем токены, но игнорируем очевидные placeholder'ы (одинаковые символы)
 SECRETS=$(git diff --cached | grep -oE "(ghp_[a-zA-Z0-9]{36}|sk_live_[a-zA-Z0-9]{32,}|sk_test_[a-zA-Z0-9]{32,}|AKIA[0-9A-Z]{16})" || true)
+
+# Фильтруем placeholder'ы: если все символы после префикса одинаковые - это placeholder
+FILTERED_SECRETS=""
 if [ -n "$SECRETS" ]; then
+    while IFS= read -r secret; do
+        [ -z "$secret" ] && continue
+        # Извлекаем часть после префикса
+        if [[ $secret =~ ^(ghp_|sk_live_|sk_test_|AKIA)(.*)$ ]]; then
+            suffix="${BASH_REMATCH[2]}"
+            # Проверяем: если все символы одинаковые - это placeholder (игнорируем)
+            # Подсчитываем уникальные символы (исключая перевод строки)
+            unique_count=$(echo -n "$suffix" | grep -o . | sort -u | wc -l)
+            if [ "$unique_count" -gt 1 ]; then
+                # Более 1 уникального символа - возможно реальный токен
+                FILTERED_SECRETS="${FILTERED_SECRETS}${secret}"$'\n'
+            fi
+            # Если 1 уникальный символ - это placeholder типа "xxxxxxx", игнорируем
+        else
+            # Если не подходит под паттерн, но был найден - проверяем
+            FILTERED_SECRETS="${FILTERED_SECRETS}${secret}"$'\n'
+        fi
+    done <<< "$SECRETS"
+fi
+
+if [ -n "$FILTERED_SECRETS" ]; then
     echo -e "${RED}❌ ОШИБКА: Найдены реальные токены/ключи:${NC}"
-    echo "$SECRETS" | head -5
+    echo "$FILTERED_SECRETS" | head -5
     echo -e "${YELLOW}Удалите их из staged и используйте GitHub Secrets!${NC}"
     ERRORS=$((ERRORS + 1))
 else
@@ -87,6 +112,8 @@ else
     echo -e "${YELLOW}Исправьте ошибки перед коммитом!${NC}"
     exit 1
 fi
+
+
 
 
 

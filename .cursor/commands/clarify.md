@@ -43,3 +43,5 @@ Review the specification and clarify:
 - Все неясности должны быть разрешены ДО создания плана
 - Clarifications.md может обновляться несколько раз
 
+
+

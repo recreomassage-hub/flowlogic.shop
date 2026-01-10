@@ -132,3 +132,5 @@ echo "✅ Контекст собран: $OUTPUT_FILE"
 cat "$OUTPUT_FILE"
 
 
+
+

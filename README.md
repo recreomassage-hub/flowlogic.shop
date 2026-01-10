@@ -54,11 +54,11 @@ See [Deployment Guide](docs/deployment_guide.md) for detailed instructions.
 - **[User Manual](docs/user_manual.md)** - Руководство пользователя
 
 ### For Developers
-- **[Spec-Driven Workflow Guide](docs/planning/spec_driven_workflow_guide.md)** - Полное руководство по Spec-Driven Development
-- **[Migration Guide](docs/planning/migration_to_spec_driven.md)** - План миграции на Spec-Driven
+- **[OpenSpec Workflow Guide](openspec/AGENTS.md)** - Инструкции для AI агентов по OpenSpec
+- **[Project Context](openspec/project.md)** - Контекст проекта (tech stack, conventions, constraints)
 - **[Contributing Guide](CONTRIBUTING.md)** - Как вносить вклад в проект
+- **[Cheatsheet](CHEATSHEET.md)** - Быстрая справка по командам Beads и OpenSpec
 - **[Developer Guide](docs/developer_guide.md)** - Руководство для разработчиков
-- **[Constitution](.specify/constitution.md)** - Технические стандарты проекта
 
 ### For DevOps
 - **[API Documentation](docs/api_documentation.md)** - Полная документация API
@@ -242,32 +242,32 @@ See [Test Plan](docs/testing/test_plan.md) for detailed testing information.
 
 ### Development Workflow
 
-Мы используем **Spec-Driven Development** для всех новых фич и изменений.
+Мы используем **OpenSpec + Beads** для всех новых фич и изменений.
 
 **Процесс:**
-1. `/specify` → Создать спецификацию фичи
-2. `/clarify` → Уточнить неясные моменты (если нужно)
-3. `/plan` → Создать технический план
-4. `/tasks` → Разбить на задачи
-5. `/implement` → Реализовать task-by-task
+1. `/openspec-proposal` → Создать предложение об изменении
+2. После approval: `/openspec-apply` → Реализовать изменения
+3. Опционально: `/openspec-to-beads` → Конвертировать tasks.md в Beads issues
+4. После deployment: `/openspec-archive` → Архивировать завершенное изменение
 
 **Документация:**
-- [Spec-Driven Workflow Guide](docs/planning/spec_driven_workflow_guide.md) - Полное руководство
-- [Migration Guide](docs/planning/migration_to_spec_driven.md) - План миграции
-- [Constitution](.specify/constitution.md) - Технические стандарты
+- [OpenSpec AGENTS.md](openspec/AGENTS.md) - Инструкции для AI агентов
+- [Project Context](openspec/project.md) - Технические стандарты и контекст
+- [Cheatsheet](CHEATSHEET.md) - Быстрая справка по командам
 
 **Для существующих фич:**
-- При изменении существующей фичи → обновить/создать ретроспективную spec
-- См. `.specify/features/` для существующих спецификаций
+- При изменении существующей фичи → создать proposal через `/openspec-proposal`
+- См. `openspec/specs/` для существующих спецификаций
+- См. `openspec/changes/` для активных предложений
 
 **Быстрый старт:**
 ```bash
 # Для новой фичи
-/specify
-Feature: {название}
-REQUIREMENTS: {требования}
+/openspec-proposal
+Change: add-feature-name
+Description: {описание изменения}
 
-# Затем следуйте workflow guide
+# Затем следуйте инструкциям в openspec/AGENTS.md
 ```
 
 See [Developer Guide](docs/developer_guide.md) for detailed contribution guidelines.

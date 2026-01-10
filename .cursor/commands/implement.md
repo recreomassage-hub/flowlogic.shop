@@ -80,3 +80,5 @@ Follow the plan EXACTLY. Do not add any fields not specified.
 
 **НЕ импровизируйте архитектурные решения!**
 
+
+

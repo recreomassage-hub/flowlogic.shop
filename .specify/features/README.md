@@ -124,6 +124,9 @@
 - [x] **Video Recording** ✅ SPEC создан (2026-01-06)
   - Путь: `.specify/features/video-recording/spec.md`
   - Статус: SPEC создан, следующий шаг: CLARIFY
+- [x] **Design System** ✅ SPEC создан (2026-01-06)
+  - Путь: `.specify/features/design-system/spec.md`
+  - Статус: SPEC создан через /idea, следующий шаг: CLARIFY или /specify для расширения
 - [ ] MediaPipe Processing (если реализовано)
 
 ### 📋 Планируется (Приоритет 3)
