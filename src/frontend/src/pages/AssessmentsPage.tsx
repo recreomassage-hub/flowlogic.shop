@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { assessmentsApi, Assessment } from '../api/assessments';
+import { Card } from '../components/ui/Card/Card';
 
 export function AssessmentsPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -53,27 +54,29 @@ export function AssessmentsPage() {
         </button>
       </div>
       {assessments.length === 0 ? (
-        <div className="card text-center py-12">
+        <Card className="text-center py-12">
           <p className="text-gray-600 mb-4">No assessments yet.</p>
           <button onClick={handleCreateAssessment} className="btn btn-primary">
             Start Your First Assessment
           </button>
-        </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {assessments.map((assessment) => (
             <Link
               key={assessment.assessment_id}
               to={`/assessments/${assessment.assessment_id}`}
-              className="card hover:shadow-lg transition-shadow"
+              className="hover:shadow-lg transition-shadow"
             >
-              <h3 className="text-lg font-semibold mb-2">{assessment.test_name}</h3>
-              <p className="text-sm text-gray-600 mb-2">
-                Status: <span className="capitalize">{assessment.status}</span>
-              </p>
-              <p className="text-sm text-gray-600">
-                Created: {new Date(assessment.created_at).toLocaleDateString()}
-              </p>
+              <Card>
+                <h3 className="text-lg font-semibold mb-2">{assessment.test_name}</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  Status: <span className="capitalize">{assessment.status}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Created: {new Date(assessment.created_at).toLocaleDateString()}
+                </p>
+              </Card>
             </Link>
           ))}
         </div>

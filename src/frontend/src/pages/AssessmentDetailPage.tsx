@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { assessmentsApi, Assessment } from '../api/assessments';
+import { Card } from '../components/ui/Card/Card';
 
 export function AssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -80,7 +81,7 @@ export function AssessmentDetailPage() {
           {exporting ? 'Exporting...' : 'Export PDF'}
         </button>
       </div>
-      <div className="card">
+      <Card>
         <div className="mb-4">
           <p className="text-sm text-gray-600">Status</p>
           <p className="text-lg font-semibold capitalize">{assessment.status}</p>
@@ -103,7 +104,7 @@ export function AssessmentDetailPage() {
             <p className="text-lg">{assessment.feedback}</p>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

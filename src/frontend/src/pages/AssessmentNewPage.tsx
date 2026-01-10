@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { VideoRecorder } from '../components/VideoRecorder/VideoRecorder';
+import { Card } from '../components/ui/Card/Card';
 
 export function AssessmentNewPage() {
   const location = useLocation();
@@ -12,12 +13,12 @@ export function AssessmentNewPage() {
     // Если пользователь зашел на страницу напрямую, а не через кнопку
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="card text-center py-12">
+        <Card className="text-center py-12">
           <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
           <p className="text-gray-600 mb-4">
             Please start assessment from the dashboard.
           </p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -29,13 +30,13 @@ export function AssessmentNewPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="card">
+      <Card>
         <VideoRecorder
           assessmentId={assessmentId}
           uploadUrl={uploadUrl}
           onUploadSuccess={handleUploadSuccess}
         />
-      </div>
+      </Card>
     </div>
   );
 }
