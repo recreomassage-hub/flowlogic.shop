@@ -2,6 +2,19 @@ import { docClient, TABLES, GSIS, PutCommand, GetCommand, QueryCommand, UpdateCo
 
 export type AssessmentStatus = 'processing' | 'completed' | 'failed' | 'invalid';
 export type ScoreResult = 'pass' | 'limited' | 'significant';
+export type Priority = 'P1' | 'P2';
+
+export interface ProblemArea {
+  area: string; // e.g., "ankle_mobility", "hip_control"
+  priority: Priority; // P1 = root cause, P2 = consequence
+  details?: string; // Additional context
+}
+
+export interface DetailedResults {
+  components?: Record<string, any>; // Component-level scores/measurements
+  compensations?: string[]; // Detected compensation patterns
+  recommendations?: string[]; // Exercise/plan recommendations
+}
 
 export interface AssessmentResult {
   score: ScoreResult;
@@ -26,6 +39,10 @@ export interface Assessment {
   created_at: string; // ISO timestamp
   completed_at?: string; // ISO timestamp
   month_key: string; // "YYYY-MM" для monthly cap
+  // New fields (optional for backward compatibility)
+  problem_areas?: ProblemArea[]; // Array of problem areas with P1/P2 priorities
+  detailed_results?: DetailedResults; // Detailed component scores and compensations
+  test_version?: number; // Version of test catalog used (for future versioning)
 }
 
 export class AssessmentModel {
