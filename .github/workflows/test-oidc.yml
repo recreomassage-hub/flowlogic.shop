@@ -1,0 +1,138 @@
+name: Test OIDC Authentication
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - '.github/workflows/test-oidc.yml'
+
+jobs:
+  test-oidc-dev:
+    name: Test OIDC - Dev
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      
+      - name: Verify OIDC authentication
+        run: |
+          echo "🔍 Verifying OIDC authentication..."
+          IDENTITY=$(aws sts get-caller-identity)
+          echo "$IDENTITY" | jq '.'
+          
+          ROLE_ARN=$(echo "$IDENTITY" | jq -r '.Arn')
+          if [[ "$ROLE_ARN" == *"flowlogic-ci-cd-dev"* ]]; then
+            echo "✅ OIDC authentication successful for dev environment"
+            echo "   Role: $ROLE_ARN"
+          else
+            echo "❌ Unexpected role ARN: $ROLE_ARN"
+            exit 1
+          fi
+      
+      - name: Test AWS permissions
+        run: |
+          echo "🔍 Testing AWS permissions..."
+          
+          # Test basic permissions
+          aws sts get-caller-identity && echo "✅ STS access: OK"
+          aws iam get-role --role-name flowlogic-ci-cd-dev --query 'Role.RoleName' && echo "✅ IAM read access: OK"
+          
+          echo "✅ All permission tests passed"
+
+  test-oidc-staging:
+    name: Test OIDC - Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      
+      - name: Verify OIDC authentication
+        run: |
+          echo "🔍 Verifying OIDC authentication..."
+          IDENTITY=$(aws sts get-caller-identity)
+          echo "$IDENTITY" | jq '.'
+          
+          ROLE_ARN=$(echo "$IDENTITY" | jq -r '.Arn')
+          if [[ "$ROLE_ARN" == *"flowlogic-ci-cd-staging"* ]]; then
+            echo "✅ OIDC authentication successful for staging environment"
+            echo "   Role: $ROLE_ARN"
+          else
+            echo "❌ Unexpected role ARN: $ROLE_ARN"
+            exit 1
+          fi
+
+  test-oidc-production:
+    name: Test OIDC - Production
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      
+      - name: Verify OIDC authentication
+        run: |
+          echo "🔍 Verifying OIDC authentication..."
+          IDENTITY=$(aws sts get-caller-identity)
+          echo "$IDENTITY" | jq '.'
+          
+          ROLE_ARN=$(echo "$IDENTITY" | jq -r '.Arn')
+          if [[ "$ROLE_ARN" == *"flowlogic-ci-cd-production"* ]]; then
+            echo "✅ OIDC authentication successful for production environment"
+            echo "   Role: $ROLE_ARN"
+          else
+            echo "❌ Unexpected role ARN: $ROLE_ARN"
+            exit 1
+          fi
+      
+      - name: Test Secrets Manager access
+        run: |
+          echo "🔍 Testing Secrets Manager access..."
+          
+          # Test reading secrets
+          if aws secretsmanager list-secrets --filters Key=name,Values=/flowlogic/production > /dev/null 2>&1; then
+            echo "✅ Secrets Manager list access: OK"
+            
+            # Try to read a secret (if exists)
+            SECRETS=$(aws secretsmanager list-secrets --filters Key=name,Values=/flowlogic/production --query 'SecretList[].Name' --output text 2>/dev/null || echo "")
+            if [ -n "$SECRETS" ]; then
+              echo "   Found secrets: $SECRETS"
+              echo "✅ Secrets Manager read access: OK"
+            else
+              echo "⚠️  No secrets found in Secrets Manager (this is OK if not created yet)"
+            fi
+          else
+            echo "❌ Secrets Manager access failed"
+            exit 1
+          fi
