@@ -26,6 +26,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const core = require('@actions/core');
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -49,11 +50,14 @@ jobs:
               check => check.status === 'completed' && check.conclusion === 'success'
             );
             
-            return {
-              shouldMerge: isPatchOrMinor && allChecksPassed,
-              isPatchOrMinor,
-              allChecksPassed,
-            };
+            const shouldMerge = isPatchOrMinor && allChecksPassed;
+            
+            // Устанавливаем outputs для следующих шагов
+            core.setOutput('shouldMerge', shouldMerge);
+            core.setOutput('isPatchOrMinor', isPatchOrMinor);
+            core.setOutput('allChecksPassed', allChecksPassed);
+            
+            console.log(`PR info: shouldMerge=${shouldMerge}, isPatchOrMinor=${isPatchOrMinor}, allChecksPassed=${allChecksPassed}`);
       
       - name: Auto-merge PR
         if: steps.pr-info.outputs.shouldMerge == 'true'
@@ -73,9 +77,14 @@ jobs:
       - name: Comment on PR
         if: steps.pr-info.outputs.shouldMerge != 'true'
         uses: actions/github-script@v7
+        env:
+          IS_PATCH_OR_MINOR: ${{ steps.pr-info.outputs.isPatchOrMinor }}
         with:
           script: |
-            const reason = !steps.pr-info.outputs.isPatchOrMinor 
+            // Получаем значение из environment variable
+            const isPatchOrMinor = process.env.IS_PATCH_OR_MINOR === 'true';
+            
+            const reason = !isPatchOrMinor 
               ? 'Это major обновление, требуется ручная проверка'
               : 'CI еще не прошел успешно';
             
