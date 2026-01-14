@@ -1,0 +1,131 @@
+# GitHub Actions workflow for Bug Hunter
+# Automatically finds bugs through static analysis, test failures, and log analysis
+
+name: Bug Hunter
+
+on:
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  bug-hunter-pre-merge:
+    name: Bug Hunter (Pre-Merge)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+          else
+            echo "⚠️ No package.json found, skipping dependency installation"
+          fi
+
+      - name: Run Bug Hunter (Fast Mode)
+        id: bug-hunter
+        run: |
+          chmod +x ./scripts/bug-hunter.sh
+          ./scripts/bug-hunter.sh --mode fast --timeout 60 || true
+        continue-on-error: true
+
+      - name: Comment PR with results
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `${{ steps.bug-hunter.outputs.summary }}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `⚠️ **Bug Hunter found issues**\n\nThis does not block merge. Please review the output above.\n\n\`\`\`\n${output}\n\`\`\``
+            });
+
+  bug-hunter-nightly:
+    name: Bug Hunter (Nightly)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+          else
+            echo "⚠️ No package.json found, skipping dependency installation"
+          fi
+
+      - name: Setup AWS CLI (for CloudWatch)
+        if: env.AWS_REGION != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION || 'us-east-1' }}
+
+      - name: Run Bug Hunter (Deep Mode)
+        run: |
+          chmod +x ./scripts/bug-hunter.sh
+          ./scripts/bug-hunter.sh --mode deep --timeout 300
+
+      - name: Run CloudWatch Analysis
+        if: env.AWS_REGION != ''
+        run: |
+          chmod +x ./scripts/bug-hunter-cloudwatch.sh
+          ./scripts/bug-hunter-cloudwatch.sh || true
+        continue-on-error: true
+        env:
+          AWS_REGION: ${{ env.AWS_REGION || 'us-east-1' }}
+
+      - name: Generate Report
+        run: |
+          REPORT_FILE="bug-report-$(date +%Y%m%d).txt"
+          echo "# Bug Hunter Report - $(date +%Y-%m-%d)" > "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          ./scripts/bug-hunter.sh --mode deep --timeout 300 >> "$REPORT_FILE" 2>&1 || true
+          echo "Report generated: $REPORT_FILE"
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bug-report-${{ github.run_number }}
+          path: bug-report-*.txt
+          retention-days: 30
+
+      - name: Create Summary
+        run: |
+          echo "## Bug Hunter Nightly Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Date: $(date +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Report available in artifacts." >> $GITHUB_STEP_SUMMARY
