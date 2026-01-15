@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const stage = process.env.STAGE || 'dev';
 const region = process.env.AWS_REGION || 'us-east-1';
@@ -16,7 +16,7 @@ export const docClient = DynamoDBDocumentClient.from(dynamoClient, {
 });
 
 // Export commands for convenience
-export { QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand };
+export { QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 // Table names
 export const TABLES = {
