@@ -272,7 +272,7 @@ jobs:
       # Step 1: Configure OIDC (early) - for early secrets loading
       - name: Configure AWS credentials (OIDC)
         if: steps.check-aws-creds.outputs.USE_OIDC == 'true'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
@@ -330,7 +330,7 @@ jobs:
       - name: Configure AWS credentials (Access Keys Fallback)
         # Prefer Access Keys for SSM Parameter Store access (more reliable than OIDC)
         if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY }}
@@ -430,6 +430,16 @@ jobs:
             exit 1
           fi
       
+      # Step 7: Refresh OIDC token before Serverless Framework (if using OIDC)
+      - name: Refresh OIDC Token for Serverless Framework
+        if: steps.aws-config-oidc.outcome == 'success'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-${{ github.run_id }}-serverless
+        id: aws-refresh-oidc
+      
       - name: Deploy Backend (Serverless)
         run: |
           if [ -d "infra/serverless" ]; then
@@ -463,8 +473,8 @@ jobs:
             echo "⚠️  infra/serverless directory not found, skipping deployment"
           fi
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ steps.aws-config-keys.outcome == 'success' && (secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID) || '' }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.aws-config-keys.outcome == 'success' && (secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY) || '' }}
           AWS_DEFAULT_REGION: us-east-1
           AWS_REGION: us-east-1
       
