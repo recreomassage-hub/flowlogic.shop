@@ -1,4 +1,6 @@
 import { docClient, TABLES, GSIS, QueryCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '../../config/database';
+import { retryAWS } from '../../utils/retry';
+import { circuitBreakers } from '../../utils/circuitBreaker';
 
 export type Tier = 'free' | 'basic' | 'pro' | 'proplus';
 
@@ -26,11 +28,20 @@ export class UserModel {
       updated_at: now,
     };
 
-    await docClient.send(new PutCommand({
-      TableName: TABLES.USERS,
-      Item: newUser,
-      ConditionExpression: 'attribute_not_exists(user_id)',
-    }));
+    await circuitBreakers.dynamoDB.execute(async () => {
+      return await retryAWS(
+        () => docClient.send(new PutCommand({
+          TableName: TABLES.USERS,
+          Item: newUser,
+          ConditionExpression: 'attribute_not_exists(user_id)',
+        })),
+        {
+          maxAttempts: 3,
+          initialDelay: 100,
+          context: { operation: 'UserModel.create', userId: newUser.user_id },
+        }
+      );
+    });
 
     return newUser;
   }
@@ -39,10 +50,19 @@ export class UserModel {
    * Get user by ID
    */
   static async getById(userId: string): Promise<User | null> {
-    const result = await docClient.send(new GetCommand({
-      TableName: TABLES.USERS,
-      Key: { user_id: userId },
-    }));
+    const result = await circuitBreakers.dynamoDB.execute(async () => {
+      return await retryAWS(
+        () => docClient.send(new GetCommand({
+          TableName: TABLES.USERS,
+          Key: { user_id: userId },
+        })),
+        {
+          maxAttempts: 3,
+          initialDelay: 100,
+          context: { operation: 'UserModel.getById', userId },
+        }
+      );
+    });
 
     return (result.Item as User) || null;
   }
@@ -51,15 +71,24 @@ export class UserModel {
    * Get user by email (using GSI)
    */
   static async getByEmail(email: string): Promise<User | null> {
-    const result = await docClient.send(new QueryCommand({
-      TableName: TABLES.USERS,
-      IndexName: GSIS.USERS_EMAIL,
-      KeyConditionExpression: 'email = :email',
-      ExpressionAttributeValues: {
-        ':email': email,
-      },
-      Limit: 1,
-    }));
+    const result = await circuitBreakers.dynamoDB.execute(async () => {
+      return await retryAWS(
+        () => docClient.send(new QueryCommand({
+          TableName: TABLES.USERS,
+          IndexName: GSIS.USERS_EMAIL,
+          KeyConditionExpression: 'email = :email',
+          ExpressionAttributeValues: {
+            ':email': email,
+          },
+          Limit: 1,
+        })),
+        {
+          maxAttempts: 3,
+          initialDelay: 100,
+          context: { operation: 'UserModel.getByEmail', email },
+        }
+      );
+    });
 
     return (result.Items?.[0] as User) || null;
   }
@@ -84,14 +113,23 @@ export class UserModel {
     expressionAttributeNames['#updated_at'] = 'updated_at';
     expressionAttributeValues[':updated_at'] = new Date().toISOString();
 
-    await docClient.send(new UpdateCommand({
-      TableName: TABLES.USERS,
-      Key: { user_id: userId },
-      UpdateExpression: `SET ${updateExpression.join(', ')}`,
-      ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: expressionAttributeValues,
-      ReturnValues: 'ALL_NEW',
-    }));
+    await circuitBreakers.dynamoDB.execute(async () => {
+      return await retryAWS(
+        () => docClient.send(new UpdateCommand({
+          TableName: TABLES.USERS,
+          Key: { user_id: userId },
+          UpdateExpression: `SET ${updateExpression.join(', ')}`,
+          ExpressionAttributeNames: expressionAttributeNames,
+          ExpressionAttributeValues: expressionAttributeValues,
+          ReturnValues: 'ALL_NEW',
+        })),
+        {
+          maxAttempts: 3,
+          initialDelay: 100,
+          context: { operation: 'UserModel.update', userId },
+        }
+      );
+    });
 
     const updated = await this.getById(userId);
     if (!updated) {
@@ -105,10 +143,19 @@ export class UserModel {
    * Delete user
    */
   static async delete(userId: string): Promise<void> {
-    await docClient.send(new DeleteCommand({
-      TableName: TABLES.USERS,
-      Key: { user_id: userId },
-    }));
+    await circuitBreakers.dynamoDB.execute(async () => {
+      return await retryAWS(
+        () => docClient.send(new DeleteCommand({
+          TableName: TABLES.USERS,
+          Key: { user_id: userId },
+        })),
+        {
+          maxAttempts: 3,
+          initialDelay: 100,
+          context: { operation: 'UserModel.delete', userId },
+        }
+      );
+    });
   }
 }
 
