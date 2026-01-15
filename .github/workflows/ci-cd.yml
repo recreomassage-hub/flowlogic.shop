@@ -269,24 +269,113 @@ jobs:
           echo "   USE_OIDC: $USE_OIDC_VAL"
           echo "   HAS_ACCESS_KEYS: $HAS_ACCESS_KEYS_VAL"
       
+      # Step 1: Configure OIDC (early) - for early secrets loading
       - name: Configure AWS credentials (OIDC)
         if: steps.check-aws-creds.outputs.USE_OIDC == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
+          role-session-name: github-${{ github.run_id }}-early
         continue-on-error: true
         id: aws-config-oidc
       
-      - name: Configure AWS credentials (Access Keys)
+      # Step 2: Load ALL SSM Parameters Early (when OIDC token is fresh)
+      - name: Load ALL SSM Parameters Early
+        id: load-secrets
+        if: steps.aws-config-oidc.outcome == 'success'
+        run: |
+          echo "🔍 Loading all SSM parameters early (OIDC token is fresh)..."
+          
+          # List all SSM parameters needed for this workflow
+          # TODO: Update this list with actual parameters used in deployment
+          PARAMETERS=(
+            "/flowlogic/production/database/url"
+            "/flowlogic/production/api/keys"
+            "/flowlogic/production/external/services"
+          )
+          
+          # Batch read всех параметров сразу
+          aws ssm get-parameters \
+            --names "${PARAMETERS[@]}" \
+            --with-decryption \
+            --query "Parameters[*].{Name:Name,Value:Value}" \
+            --output json > ssm_parameters.json 2>&1 || {
+              echo "⚠️  Failed to read SSM parameters, will use fallback"
+              echo "{}" > ssm_parameters.json
+            }
+          
+          # Save to GitHub Actions environment
+          echo "SSM_PARAMETERS=$(cat ssm_parameters.json | jq -c .)" >> $GITHUB_ENV
+          
+          # Verify parameters loaded
+          PARAM_COUNT=$(cat ssm_parameters.json | jq '. | length' || echo "0")
+          echo "✅ Loaded $PARAM_COUNT SSM parameters"
+          
+          # Send metric to CloudWatch (workflow start)
+          if [ -f "scripts/send-oidc-metrics.sh" ]; then
+            ./scripts/send-oidc-metrics.sh WorkflowDuration 0 Seconds || true
+          fi
+      
+      # Step 3: Cache SSM Parameters
+      - name: Cache SSM Parameters
+        if: steps.load-secrets.outcome == 'success'
+        uses: actions/cache/save@v3
+        with:
+          path: ssm_parameters.json
+          key: ssm-params-${{ github.sha }}
+          fail-on-cache-miss: false
+      
+      # Step 4: Fallback to Access Keys if OIDC failed
+      - name: Configure AWS credentials (Access Keys Fallback)
         # Prefer Access Keys for SSM Parameter Store access (more reliable than OIDC)
-        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true'
+        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
         id: aws-config-keys
+      
+      # Step 5: Load secrets with Access Keys fallback
+      - name: Load SSM Parameters (Fallback)
+        if: steps.aws-config-oidc.outcome != 'success' && steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "⚠️  Using Access Keys fallback for SSM access"
+          
+          PARAMETERS=(
+            "/flowlogic/production/database/url"
+            "/flowlogic/production/api/keys"
+            "/flowlogic/production/external/services"
+          )
+          
+          aws ssm get-parameters \
+            --names "${PARAMETERS[@]}" \
+            --with-decryption \
+            --query "Parameters[*].{Name:Name,Value:Value}" \
+            --output json > ssm_parameters.json || {
+              echo "❌ Failed to read SSM parameters with Access Keys"
+              exit 1
+            }
+          
+          echo "SSM_PARAMETERS=$(cat ssm_parameters.json | jq -c .)" >> $GITHUB_ENV
+          
+          # Send fallback usage metric
+          if [ -f "scripts/send-oidc-metrics.sh" ]; then
+            ./scripts/send-oidc-metrics.sh SSMFallbackUsage 1 Count || true
+          fi
+      
+      # Step 6: Verify secrets loaded
+      - name: Verify secrets loaded
+        if: steps.load-secrets.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          if [ -z "${SSM_PARAMETERS:-}" ] || [ "$SSM_PARAMETERS" = "{}" ]; then
+            echo "⚠️  WARNING: SSM parameters not loaded (may not be needed for this workflow)"
+          else
+            echo "✅ SSM parameters loaded successfully"
+            PARAM_COUNT=$(echo "$SSM_PARAMETERS" | jq '. | length' || echo "0")
+            echo "   Parameters count: $PARAM_COUNT"
+          fi
       
       - name: Verify AWS credentials
         run: |

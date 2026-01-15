@@ -1,0 +1,101 @@
+# CloudWatch Resources for OIDC Token Expiry Monitoring
+# Part of robust solution for bug a3o
+
+Resources:
+  # SNS Topic for OIDC Token Expiry Alerts
+  OIDCTokenExpiryAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: flowlogic-oidc-token-expiry-alerts
+      DisplayName: OIDC Token Expiry Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: devops@flowlogic.shop
+        # Add Slack webhook if available
+        # - Protocol: https
+        #   Endpoint: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+  # CloudWatch Alarm: SSM Fallback Usage
+  SSMFallbackUsageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-ssm-fallback-usage
+      AlarmDescription: "P1: SSM fallback usage detected (OIDC token may have expired)"
+      MetricName: SSMFallbackUsage
+      Namespace: FlowLogic/Workflows
+      Statistic: Sum
+      Period: 3600  # 1 hour
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OIDCTokenExpiryAlertsTopic
+      OKActions:
+        - !Ref OIDCTokenExpiryAlertsTopic
+
+  # CloudWatch Alarm: Workflow Duration > 1 hour
+  WorkflowDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-workflow-duration-long
+      AlarmDescription: "P2: Workflow duration > 1 hour (OIDC token may expire)"
+      MetricName: WorkflowDuration
+      Namespace: FlowLogic/Workflows
+      Statistic: Maximum
+      Period: 3600  # 1 hour
+      EvaluationPeriods: 1
+      Threshold: 3600  # 1 hour in seconds
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OIDCTokenExpiryAlertsTopic
+
+  # CloudWatch Alarm: OIDC Token Expiry Events
+  OIDCTokenExpiryEventsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-oidc-token-expiry-events
+      AlarmDescription: "P0: OIDC token expiry events detected"
+      MetricName: OIDCTokenExpiryEvents
+      Namespace: FlowLogic/Workflows
+      Statistic: Sum
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OIDCTokenExpiryAlertsTopic
+
+  # CloudWatch Dashboard for OIDC Token Monitoring
+  OIDCTokenMonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: flowlogic-oidc-token-monitoring
+      DashboardBody: |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["FlowLogic/Workflows", "SSMFallbackUsage", {"stat": "Sum"}],
+                  ["FlowLogic/Workflows", "WorkflowDuration", {"stat": "Maximum"}],
+                  ["FlowLogic/Workflows", "OIDCTokenExpiryEvents", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "us-east-1",
+                "title": "OIDC Token Monitoring"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  OIDCTokenExpiryAlertsTopicArn:
+    Description: ARN of SNS topic for OIDC token expiry alerts
+    Value: !Ref OIDCTokenExpiryAlertsTopic
+    Export:
+      Name: flowlogic-oidc-token-expiry-alerts-topic-arn
