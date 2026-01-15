@@ -10,6 +10,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  checks: read  # Добавляем права на чтение checks для проверки CI статуса
 
 jobs:
   auto-merge:
@@ -24,40 +25,64 @@ jobs:
       - name: Get PR information
         id: pr-info
         uses: actions/github-script@v7
+        continue-on-error: true  # Продолжать даже при ошибках
         with:
           script: |
-            const core = require('@actions/core');
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
+            // core уже доступен в контексте github-script, не нужно require
             
-            // Проверяем, что это patch или minor обновление
-            const title = pr.title.toLowerCase();
-            const isPatch = title.includes('patch') || title.match(/bump .+ from .+ to .+ \(patch\)/i);
-            const isMinor = title.includes('minor') || title.match(/bump .+ from .+ to .+ \(minor\)/i);
-            const isPatchOrMinor = isPatch || isMinor;
+            // Инициализируем значения по умолчанию
+            let shouldMerge = false;
+            let isPatchOrMinor = false;
+            let allChecksPassed = false;
             
-            // Проверяем, что CI прошел успешно
-            const { data: checks } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: pr.head.sha,
-            });
-            
-            const allChecksPassed = checks.check_runs.every(
-              check => check.status === 'completed' && check.conclusion === 'success'
-            );
-            
-            const shouldMerge = isPatchOrMinor && allChecksPassed;
-            
-            // Устанавливаем outputs для следующих шагов
-            core.setOutput('shouldMerge', shouldMerge);
-            core.setOutput('isPatchOrMinor', isPatchOrMinor);
-            core.setOutput('allChecksPassed', allChecksPassed);
-            
-            console.log(`PR info: shouldMerge=${shouldMerge}, isPatchOrMinor=${isPatchOrMinor}, allChecksPassed=${allChecksPassed}`);
+            try {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+              });
+              
+              // Проверяем, что это patch или minor обновление
+              const title = pr.title.toLowerCase();
+              const isPatch = title.includes('patch') || title.match(/bump .+ from .+ to .+ \(patch\)/i);
+              const isMinor = title.includes('minor') || title.match(/bump .+ from .+ to .+ \(minor\)/i);
+              isPatchOrMinor = isPatch || isMinor;
+              
+              // Проверяем, что CI прошел успешно
+              try {
+                const { data: checks } = await github.rest.checks.listForRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: pr.head.sha,
+                });
+                
+                // Если нет checks, считаем что CI еще не запустился
+                if (checks.check_runs && checks.check_runs.length > 0) {
+                  allChecksPassed = checks.check_runs.every(
+                    check => check.status === 'completed' && check.conclusion === 'success'
+                  );
+                } else {
+                  console.log('⚠️ No checks found yet, CI may not have started');
+                  allChecksPassed = false;
+                }
+              } catch (checksError) {
+                console.log(`⚠️ Error checking CI status: ${checksError.message}`);
+                allChecksPassed = false;
+              }
+              
+              shouldMerge = isPatchOrMinor && allChecksPassed;
+              
+              console.log(`PR info: shouldMerge=${shouldMerge}, isPatchOrMinor=${isPatchOrMinor}, allChecksPassed=${allChecksPassed}`);
+            } catch (error) {
+              console.error(`❌ Error getting PR information: ${error.message}`);
+              console.error(error.stack);
+              // Используем значения по умолчанию (уже установлены выше)
+            } finally {
+              // Всегда устанавливаем outputs, даже при ошибке
+              core.setOutput('shouldMerge', String(shouldMerge));
+              core.setOutput('isPatchOrMinor', String(isPatchOrMinor));
+              core.setOutput('allChecksPassed', String(allChecksPassed));
+            }
       
       - name: Auto-merge PR
         if: steps.pr-info.outputs.shouldMerge == 'true'
@@ -82,6 +107,7 @@ jobs:
         with:
           script: |
             // Получаем значение из environment variable
+            // core уже доступен в контексте github-script
             const isPatchOrMinor = process.env.IS_PATCH_OR_MINOR === 'true';
             
             const reason = !isPatchOrMinor 
