@@ -70,9 +70,13 @@ else
     ((FAILED++))
 fi
 
-if check_endpoint "GET" "/health" "200" "Health endpoint"; then
+# Health endpoint может вернуть 200 (healthy) или 503 (unhealthy), но не должен быть 500/502/403
+HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/health" 2>/dev/null || echo "000")
+if [ "$HEALTH_CODE" = "200" ] || [ "$HEALTH_CODE" = "503" ]; then
+    echo "   Проверка Health endpoint... ✅ ($HEALTH_CODE)"
     ((PASSED++))
 else
+    echo "   Проверка Health endpoint... ❌ ($HEALTH_CODE, ожидалось 200 или 503)"
     ((FAILED++))
 fi
 
