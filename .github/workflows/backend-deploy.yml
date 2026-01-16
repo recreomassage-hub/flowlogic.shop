@@ -25,6 +25,9 @@ jobs:
     if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'dev')
     name: Deploy to Dev
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     environment:
       name: dev
       url: https://t1p7ii26f5.execute-api.us-east-1.amazonaws.com/dev/
@@ -51,24 +54,151 @@ jobs:
         working-directory: src/backend
         run: npm ci && npm run build
 
-      - name: Configure AWS credentials
+      # Step 1: Check AWS credentials configuration
+      - name: Check AWS credentials configuration
+        id: check-aws-creds
+        run: |
+          USE_OIDC="false"
+          HAS_ACCESS_KEYS="false"
+          
+          if [ -n "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            USE_OIDC="true"
+            echo "✅ AWS_ROLE_ARN found in GitHub Environment"
+          else
+            echo "⚠️  AWS_ROLE_ARN not found in GitHub Environment"
+          fi
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_DEV }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}" ]; then
+            HAS_ACCESS_KEYS="true"
+            echo "✅ Access Keys found (for fallback)"
+          fi
+          
+          echo "USE_OIDC=$USE_OIDC" >> $GITHUB_OUTPUT
+          echo "HAS_ACCESS_KEYS=$HAS_ACCESS_KEYS" >> $GITHUB_OUTPUT
+          
+          if [ "$USE_OIDC" != "true" ] && [ "$HAS_ACCESS_KEYS" != "true" ]; then
+            echo "❌ ERROR: Neither AWS_ROLE_ARN nor Access Keys are configured!"
+            exit 1
+          fi
+
+      # Step 2: Configure OIDC
+      - name: Configure AWS credentials (OIDC)
+        if: steps.check-aws-creds.outputs.USE_OIDC == 'true'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-${{ github.run_id }}-dev
+        continue-on-error: true
+        id: aws-config-oidc
+
+      # Step 3: Validate AWS credentials
+      - name: Validate AWS credentials
+        if: steps.aws-config-oidc.outcome == 'success'
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          ENVIRONMENT: dev
+        run: |
+          if [ -f "scripts/validate-aws-credentials.sh" ]; then
+            ./scripts/validate-aws-credentials.sh dev
+          fi
+
+      # Step 3.5: Load SSM Parameters Early (when OIDC token is fresh)
+      - name: Load SSM Parameters Early
+        if: steps.aws-config-oidc.outcome == 'success'
+        id: load-ssm-params
+        run: |
+          echo "🔍 Loading SSM parameters early (OIDC token is fresh)..."
+          
+          # Read first OIDC deployment date from SSM Parameter Store
+          FIRST_OIDC_DATE=$(aws ssm get-parameter \
+            --name "/flowlogic/cicd/first-oidc-deployment-date" \
+            --query "Parameter.Value" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -n "$FIRST_OIDC_DATE" ]; then
+            echo "✅ First OIDC date loaded: $FIRST_OIDC_DATE"
+            echo "FIRST_OIDC_DATE=$FIRST_OIDC_DATE" >> $GITHUB_ENV
+          else
+            echo "⚠️  First OIDC date not found in SSM Parameter Store"
+            echo "FIRST_OIDC_DATE=" >> $GITHUB_ENV
+          fi
+          
+          # Load any other SSM parameters needed for deployment
+          # Add more parameters here as needed
+          echo "✅ SSM parameters loaded successfully"
+
+      # Step 4: Check fallback expiry (if OIDC failed)
+      - name: Check fallback expiry
+        if: steps.aws-config-oidc.outcome != 'success' && steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true'
+        id: check-fallback-expiry
+        run: |
+          echo "🔍 Checking fallback expiry (14 days from first OIDC)..."
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_DEV }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}" ]; then
+            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID_DEV }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}"
+          fi
+          
+          export AWS_REGION=us-east-1
+          
+          # Try to use FIRST_OIDC_DATE from previous step if available, otherwise read from SSM
+          if [ -z "${FIRST_OIDC_DATE:-}" ]; then
+            FIRST_OIDC_DATE=$(aws ssm get-parameter \
+              --name "/flowlogic/cicd/first-oidc-deployment-date" \
+              --query "Parameter.Value" \
+              --output text 2>/dev/null || echo "")
+          fi
+          
+          if [ -z "$FIRST_OIDC_DATE" ]; then
+            echo "⚠️  First OIDC date not found, allowing fallback"
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          elif [ -f "scripts/check-fallback-expiry.sh" ]; then
+            if ./scripts/check-fallback-expiry.sh "$FIRST_OIDC_DATE"; then
+              echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+            else
+              echo "FALLBACK_ALLOWED=false" >> $GITHUB_ENV
+              exit 1
+            fi
+          else
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          fi
+
+      # Step 5: Configure AWS credentials (Access Keys Fallback)
+      - name: Configure AWS credentials (Access Keys Fallback)
+        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success' && steps.check-fallback-expiry.outcome == 'success'
         uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
           aws-region: us-east-1
+        id: aws-config-keys
+
+      # Step 6: Send fallback metric (if used)
+      - name: Send fallback metric
+        if: steps.aws-config-oidc.outcome != 'success' && steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "⚠️  Using Access Keys fallback for dev"
+          if [ -f "scripts/send-fallback-metric.sh" ]; then
+            ./scripts/send-fallback-metric.sh dev || true
+          fi
 
       - name: Deploy to AWS (Dev)
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         working-directory: infra/serverless
         run: serverless deploy --stage dev --verbose
 
       - name: Run post-deploy checks
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         run: ./scripts/post_deploy.sh dev
 
   deploy-staging:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'staging')
     name: Deploy to Staging
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     environment:
       name: staging
       url: https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/staging/
@@ -95,24 +225,151 @@ jobs:
         working-directory: src/backend
         run: npm ci && npm run build
 
-      - name: Configure AWS credentials
+      # Step 1: Check AWS credentials configuration
+      - name: Check AWS credentials configuration
+        id: check-aws-creds
+        run: |
+          USE_OIDC="false"
+          HAS_ACCESS_KEYS="false"
+          
+          if [ -n "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            USE_OIDC="true"
+            echo "✅ AWS_ROLE_ARN found in GitHub Environment"
+          else
+            echo "⚠️  AWS_ROLE_ARN not found in GitHub Environment"
+          fi
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}" ]; then
+            HAS_ACCESS_KEYS="true"
+            echo "✅ Access Keys found (for fallback)"
+          fi
+          
+          echo "USE_OIDC=$USE_OIDC" >> $GITHUB_OUTPUT
+          echo "HAS_ACCESS_KEYS=$HAS_ACCESS_KEYS" >> $GITHUB_OUTPUT
+          
+          if [ "$USE_OIDC" != "true" ] && [ "$HAS_ACCESS_KEYS" != "true" ]; then
+            echo "❌ ERROR: Neither AWS_ROLE_ARN nor Access Keys are configured!"
+            exit 1
+          fi
+
+      # Step 2: Configure OIDC
+      - name: Configure AWS credentials (OIDC)
+        if: steps.check-aws-creds.outputs.USE_OIDC == 'true'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-${{ github.run_id }}-staging
+        continue-on-error: true
+        id: aws-config-oidc
+
+      # Step 3: Validate AWS credentials
+      - name: Validate AWS credentials
+        if: steps.aws-config-oidc.outcome == 'success'
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          ENVIRONMENT: staging
+        run: |
+          if [ -f "scripts/validate-aws-credentials.sh" ]; then
+            ./scripts/validate-aws-credentials.sh staging
+          fi
+
+      # Step 3.5: Load SSM Parameters Early (when OIDC token is fresh)
+      - name: Load SSM Parameters Early
+        if: steps.aws-config-oidc.outcome == 'success'
+        id: load-ssm-params
+        run: |
+          echo "🔍 Loading SSM parameters early (OIDC token is fresh)..."
+          
+          # Read first OIDC deployment date from SSM Parameter Store
+          FIRST_OIDC_DATE=$(aws ssm get-parameter \
+            --name "/flowlogic/cicd/first-oidc-deployment-date" \
+            --query "Parameter.Value" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -n "$FIRST_OIDC_DATE" ]; then
+            echo "✅ First OIDC date loaded: $FIRST_OIDC_DATE"
+            echo "FIRST_OIDC_DATE=$FIRST_OIDC_DATE" >> $GITHUB_ENV
+          else
+            echo "⚠️  First OIDC date not found in SSM Parameter Store"
+            echo "FIRST_OIDC_DATE=" >> $GITHUB_ENV
+          fi
+          
+          # Load any other SSM parameters needed for deployment
+          # Add more parameters here as needed
+          echo "✅ SSM parameters loaded successfully"
+
+      # Step 4: Check fallback expiry (if OIDC failed)
+      - name: Check fallback expiry
+        if: steps.aws-config-oidc.outcome != 'success' && steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true'
+        id: check-fallback-expiry
+        run: |
+          echo "🔍 Checking fallback expiry (14 days from first OIDC)..."
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}" ]; then
+            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}"
+          fi
+          
+          export AWS_REGION=us-east-1
+          
+          # Try to use FIRST_OIDC_DATE from previous step if available, otherwise read from SSM
+          if [ -z "${FIRST_OIDC_DATE:-}" ]; then
+            FIRST_OIDC_DATE=$(aws ssm get-parameter \
+              --name "/flowlogic/cicd/first-oidc-deployment-date" \
+              --query "Parameter.Value" \
+              --output text 2>/dev/null || echo "")
+          fi
+          
+          if [ -z "$FIRST_OIDC_DATE" ]; then
+            echo "⚠️  First OIDC date not found, allowing fallback"
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          elif [ -f "scripts/check-fallback-expiry.sh" ]; then
+            if ./scripts/check-fallback-expiry.sh "$FIRST_OIDC_DATE"; then
+              echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+            else
+              echo "FALLBACK_ALLOWED=false" >> $GITHUB_ENV
+              exit 1
+            fi
+          else
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          fi
+
+      # Step 5: Configure AWS credentials (Access Keys Fallback)
+      - name: Configure AWS credentials (Access Keys Fallback)
+        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success' && steps.check-fallback-expiry.outcome == 'success'
         uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_STAGING }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_STAGING }}
           aws-region: us-east-1
+        id: aws-config-keys
+
+      # Step 6: Send fallback metric (if used)
+      - name: Send fallback metric
+        if: steps.aws-config-oidc.outcome != 'success' && steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "⚠️  Using Access Keys fallback for staging"
+          if [ -f "scripts/send-fallback-metric.sh" ]; then
+            ./scripts/send-fallback-metric.sh staging || true
+          fi
 
       - name: Deploy to AWS (Staging)
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         working-directory: infra/serverless
         run: serverless deploy --stage staging --verbose
 
       - name: Run post-deploy checks
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         run: ./scripts/post_deploy.sh staging
 
   deploy-production:
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.stage == 'production')
     name: Deploy to Production
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     environment:
       name: production
       url: https://84xkp5s9q6.execute-api.us-east-1.amazonaws.com/production/
@@ -139,17 +396,176 @@ jobs:
         working-directory: src/backend
         run: npm ci && npm run build
 
-      - name: Configure AWS credentials
+      # Step 1: Check AWS credentials configuration
+      - name: Check AWS credentials configuration
+        id: check-aws-creds
+        run: |
+          USE_OIDC="false"
+          HAS_ACCESS_KEYS="false"
+          
+          if [ -n "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            USE_OIDC="true"
+            echo "✅ AWS_ROLE_ARN found in GitHub Environment"
+          else
+            echo "⚠️  AWS_ROLE_ARN not found in GitHub Environment"
+          fi
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_PROD }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}" ]; then
+            HAS_ACCESS_KEYS="true"
+            echo "✅ Access Keys found (for fallback)"
+          fi
+          
+          echo "USE_OIDC=$USE_OIDC" >> $GITHUB_OUTPUT
+          echo "HAS_ACCESS_KEYS=$HAS_ACCESS_KEYS" >> $GITHUB_OUTPUT
+          
+          if [ "$USE_OIDC" != "true" ] && [ "$HAS_ACCESS_KEYS" != "true" ]; then
+            echo "❌ ERROR: Neither AWS_ROLE_ARN nor Access Keys are configured!"
+            exit 1
+          fi
+
+      # Step 2: Configure OIDC
+      - name: Configure AWS credentials (OIDC)
+        if: steps.check-aws-creds.outputs.USE_OIDC == 'true'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-${{ github.run_id }}-production
+        continue-on-error: true
+        id: aws-config-oidc
+
+      # Step 3: Validate AWS credentials
+      - name: Validate AWS credentials
+        if: steps.aws-config-oidc.outcome == 'success'
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          ENVIRONMENT: production
+        run: |
+          if [ -f "scripts/validate-aws-credentials.sh" ]; then
+            ./scripts/validate-aws-credentials.sh production
+          fi
+
+      # Step 3.5: Load SSM Parameters Early (when OIDC token is fresh)
+      - name: Load SSM Parameters Early
+        if: steps.aws-config-oidc.outcome == 'success'
+        id: load-ssm-params
+        run: |
+          echo "🔍 Loading SSM parameters early (OIDC token is fresh)..."
+          
+          # Read first OIDC deployment date from SSM Parameter Store
+          FIRST_OIDC_DATE=$(aws ssm get-parameter \
+            --name "/flowlogic/cicd/first-oidc-deployment-date" \
+            --query "Parameter.Value" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -n "$FIRST_OIDC_DATE" ]; then
+            echo "✅ First OIDC date loaded: $FIRST_OIDC_DATE"
+            echo "FIRST_OIDC_DATE=$FIRST_OIDC_DATE" >> $GITHUB_ENV
+          else
+            echo "⚠️  First OIDC date not found in SSM Parameter Store"
+            echo "FIRST_OIDC_DATE=" >> $GITHUB_ENV
+          fi
+          
+          # Load any other SSM parameters needed for deployment
+          # Add more parameters here as needed
+          echo "✅ SSM parameters loaded successfully"
+
+      # Step 4: Load secrets from AWS Secrets Manager (production)
+      - name: Load secrets from AWS Secrets Manager
+        if: steps.aws-config-oidc.outcome == 'success'
+        run: |
+          echo "🔍 Loading secrets from AWS Secrets Manager for production..."
+          
+          # Load secrets using read-secrets-manager.sh
+          if [ -f "scripts/read-secrets-manager.sh" ]; then
+            # Load payment secrets
+            if ./scripts/read-secrets-manager.sh --category payment --export > /tmp/secrets-payment.sh 2>/dev/null; then
+              source /tmp/secrets-payment.sh
+              echo "✅ Payment secrets loaded"
+            fi
+            
+            # Load database secrets
+            if ./scripts/read-secrets-manager.sh --category database --export > /tmp/secrets-database.sh 2>/dev/null; then
+              source /tmp/secrets-database.sh
+              echo "✅ Database secrets loaded"
+            fi
+            
+            # Load encryption secrets
+            if ./scripts/read-secrets-manager.sh --category encryption --export > /tmp/secrets-encryption.sh 2>/dev/null; then
+              source /tmp/secrets-encryption.sh
+              echo "✅ Encryption secrets loaded"
+            fi
+            
+            # Load authentication secrets
+            if ./scripts/read-secrets-manager.sh --category authentication --export > /tmp/secrets-auth.sh 2>/dev/null; then
+              source /tmp/secrets-auth.sh
+              echo "✅ Authentication secrets loaded"
+            fi
+          else
+            echo "⚠️  read-secrets-manager.sh not found, skipping secrets loading"
+          fi
+
+      # Step 5: Check fallback expiry (if OIDC failed)
+      - name: Check fallback expiry
+        if: steps.aws-config-oidc.outcome != 'success' && steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true'
+        id: check-fallback-expiry
+        run: |
+          echo "🔍 Checking fallback expiry (14 days from first OIDC)..."
+          
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_PROD }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}" ]; then
+            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID_PROD }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}"
+          fi
+          
+          export AWS_REGION=us-east-1
+          
+          # Try to use FIRST_OIDC_DATE from previous step if available, otherwise read from SSM
+          if [ -z "${FIRST_OIDC_DATE:-}" ]; then
+            FIRST_OIDC_DATE=$(aws ssm get-parameter \
+              --name "/flowlogic/cicd/first-oidc-deployment-date" \
+              --query "Parameter.Value" \
+              --output text 2>/dev/null || echo "")
+          fi
+          
+          if [ -z "$FIRST_OIDC_DATE" ]; then
+            echo "⚠️  First OIDC date not found, allowing fallback"
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          elif [ -f "scripts/check-fallback-expiry.sh" ]; then
+            if ./scripts/check-fallback-expiry.sh "$FIRST_OIDC_DATE"; then
+              echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+            else
+              echo "FALLBACK_ALLOWED=false" >> $GITHUB_ENV
+              exit 1
+            fi
+          else
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          fi
+
+      # Step 6: Configure AWS credentials (Access Keys Fallback)
+      - name: Configure AWS credentials (Access Keys Fallback)
+        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success' && steps.check-fallback-expiry.outcome == 'success'
         uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
           aws-region: us-east-1
+        id: aws-config-keys
+
+      # Step 7: Send fallback metric (if used)
+      - name: Send fallback metric
+        if: steps.aws-config-oidc.outcome != 'success' && steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "⚠️  Using Access Keys fallback for production"
+          if [ -f "scripts/send-fallback-metric.sh" ]; then
+            ./scripts/send-fallback-metric.sh production || true
+          fi
 
       - name: Deploy to AWS (Production)
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         working-directory: infra/serverless
         run: serverless deploy --stage production --verbose
 
       - name: Run post-deploy checks
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         run: ./scripts/post_deploy.sh production
 
