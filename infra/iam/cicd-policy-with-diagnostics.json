@@ -20,7 +20,7 @@
         "lambda:ListAliases"
       ],
       "Resource": [
-        "arn:aws:lambda:us-east-1:*:function:flowlogic-production-*"
+        "arn:aws:lambda:us-east-1:*:function:flowlogic-*"
       ]
     },
     {
@@ -49,7 +49,7 @@
         "dynamodb:TagResource"
       ],
       "Resource": [
-        "arn:aws:dynamodb:us-east-1:*:table/flowlogic-production-*"
+        "arn:aws:dynamodb:us-east-1:*:table/flowlogic-*"
       ]
     },
     {
@@ -67,7 +67,7 @@
         "s3:DeleteBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::flowlogic-production-*"
+        "arn:aws:s3:::flowlogic-*"
       ]
     },
     {
@@ -86,8 +86,7 @@
         "cloudformation:ListStacks"
       ],
       "Resource": [
-        "arn:aws:cloudformation:us-east-1:*:stack/flowlogic-*/*",
-        "arn:aws:cloudformation:us-east-1:*:stack/flowlogic-backend-*/*"
+        "arn:aws:cloudformation:us-east-1:*:stack/flowlogic-*/*"
       ]
     },
     {
@@ -104,7 +103,7 @@
         "iam:ListAttachedRolePolicies"
       ],
       "Resource": [
-        "arn:aws:iam::*:role/flowlogic-production-*"
+        "arn:aws:iam::*:role/flowlogic-*"
       ]
     },
     {
@@ -119,7 +118,7 @@
         "logs:DescribeLogStreams"
       ],
       "Resource": [
-        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/flowlogic-production-*"
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/flowlogic-*"
       ]
     },
     {
@@ -131,43 +130,8 @@
         "ssm:DescribeParameters"
       ],
       "Resource": [
-        "arn:aws:ssm:us-east-1:*:parameter/flowlogic/production/*"
+        "arn:aws:ssm:us-east-1:*:parameter/flowlogic/*"
       ]
-    },
-    {
-      "Sid": "SecretsManagerReadOnly",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecrets"
-      ],
-      "Resource": [
-        "arn:aws:secretsmanager:us-east-1:*:secret:flowlogic/production/*"
-      ]
-    },
-    {
-      "Sid": "SecretsManagerList",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:ListSecrets"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "CloudWatchMetrics",
-      "Effect": "Allow",
-      "Action": [
-        "cloudwatch:PutMetricData",
-        "cloudwatch:GetMetricStatistics",
-        "cloudwatch:ListMetrics"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "cloudwatch:namespace": "CICD"
-        }
-      }
     },
     {
       "Sid": "EventBridgeManagement",
@@ -181,7 +145,7 @@
         "events:ListTargetsByRule"
       ],
       "Resource": [
-        "arn:aws:events:us-east-1:*:rule/flowlogic-production-*"
+        "arn:aws:events:us-east-1:*:rule/flowlogic-*"
       ]
     },
     {
@@ -195,7 +159,7 @@
         "sqs:TagQueue"
       ],
       "Resource": [
-        "arn:aws:sqs:us-east-1:*:flowlogic-production-*"
+        "arn:aws:sqs:us-east-1:*:flowlogic-*"
       ]
     },
     {

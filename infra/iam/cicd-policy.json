@@ -82,6 +82,7 @@
         "cloudformation:DescribeStacks",
         "cloudformation:DescribeStackEvents",
         "cloudformation:DescribeStackResources",
+        "cloudformation:DescribeStackResource",
         "cloudformation:GetTemplate",
         "cloudformation:ValidateTemplate",
         "cloudformation:ListStacks"
