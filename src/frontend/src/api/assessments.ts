@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { AssessmentNormalizedOutput } from './types';
 
 export interface Assessment {
   user_id: string;
@@ -15,7 +16,7 @@ export interface Assessment {
     score: 'pass' | 'limited' | 'significant';
     confidence: number;
     problem_areas?: string[];
-    normalized_output?: Record<string, any>;
+    normalized_output?: AssessmentNormalizedOutput;
   };
   feedback?: string;
   created_at: string;
@@ -47,16 +48,19 @@ export const assessmentsApi = {
     try {
       const response = await apiClient.post<CreateAssessmentResponse>('/v1/assessments', data);
       return response.data;
-    } catch (error: any) {
+    } catch (error) {
       // Дополнительная диагностика
-      console.error('Create assessment error details:', {
-        url: error.config?.url,
-        baseURL: error.config?.baseURL,
-        fullURL: error.config?.baseURL + error.config?.url,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-      });
+      if (error && typeof error === 'object' && 'config' in error) {
+        const axiosError = error as { config?: { url?: string; baseURL?: string }; response?: { status?: number; statusText?: string; data?: unknown } };
+        console.error('Create assessment error details:', {
+          url: axiosError.config?.url,
+          baseURL: axiosError.config?.baseURL,
+          fullURL: axiosError.config?.baseURL + axiosError.config?.url,
+          status: axiosError.response?.status,
+          statusText: axiosError.response?.statusText,
+          data: axiosError.response?.data,
+        });
+      }
       throw error;
     }
   },

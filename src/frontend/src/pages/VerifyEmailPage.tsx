@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import * as React from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { authApi } from '../api/auth';
+import { getErrorMessage } from '../api/types';
 
 export function VerifyEmailPage() {
   const [code, setCode] = useState('');
@@ -11,6 +14,12 @@ export function VerifyEmailPage() {
   const navigate = useNavigate();
 
   const email = searchParams.get('email') || '';
+  
+  // #region agent log
+  React.useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/77bf5b9f-2845-440c-8d1e-fb3a5b329e9b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VerifyEmailPage.tsx:14',message:'VerifyEmailPage mounted',data:{email,hasCode:!!code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  }, [email, code]);
+  // #endregion
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,13 +32,37 @@ export function VerifyEmailPage() {
     setError(null);
 
     try {
-      await authApi.verify({ email, code });
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid verification code. Please try again.');
+      const response = await authApi.verify({ email, code });
+      // Если пользователь уже подтвержден, показываем успех и перенаправляем
+      if (response.alreadyConfirmed) {
+        setSuccess(true);
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setSuccess(true);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/77bf5b9f-2845-440c-8d1e-fb3a5b329e9b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VerifyEmailPage.tsx:35',message:'Setting success, will navigate to login',data:{email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        setTimeout(() => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/77bf5b9f-2845-440c-8d1e-fb3a5b329e9b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VerifyEmailPage.tsx:37',message:'Navigating to login',data:{path:'/login'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
+          navigate('/login');
+        }, 2000);
+      }
+    } catch (err) {
+      const errorMessage = getErrorMessage(err);
+      // Если пользователь уже подтвержден, показываем успех вместо ошибки
+      if (errorMessage.toLowerCase().includes('already confirmed') || 
+          errorMessage.toLowerCase().includes('already verified')) {
+        setSuccess(true);
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -37,7 +70,11 @@ export function VerifyEmailPage() {
 
   if (success) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12">
+      <>
+        <Helmet>
+          <title>Email Verified - Flow Logic</title>
+        </Helmet>
+        <div className="max-w-md mx-auto px-4 py-12">
         <div className="card">
           <div className="text-center">
             <div className="mb-4 text-green-600 text-5xl">✓</div>
@@ -48,11 +85,16 @@ export function VerifyEmailPage() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-12">
+    <>
+      <Helmet>
+        <title>Verify Email - Flow Logic</title>
+      </Helmet>
+      <div className="max-w-md mx-auto px-4 py-12">
       <div className="card">
         <h2 className="text-2xl font-bold mb-6">Verify Your Email</h2>
         {email && (
@@ -120,6 +162,7 @@ export function VerifyEmailPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { assessmentsApi, Assessment } from '../api/assessments';
 import { Card } from '../components/ui/Card/Card';
+import { getErrorMessage } from '../api/types';
 
 export function AssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -52,9 +54,9 @@ export function AssessmentDetailPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to export PDF:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to export PDF. Please try again.';
+      const errorMessage = getErrorMessage(error);
       alert(errorMessage);
     } finally {
       setExporting(false);
@@ -62,15 +64,33 @@ export function AssessmentDetailPage() {
   };
 
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return (
+      <>
+        <Helmet>
+          <title>Assessment Details - Flow Logic</title>
+        </Helmet>
+        <div className="text-center py-12">Loading...</div>
+      </>
+    );
   }
 
   if (!assessment) {
-    return <div className="text-center py-12">Assessment not found</div>;
+    return (
+      <>
+        <Helmet>
+          <title>Assessment Not Found - Flow Logic</title>
+        </Helmet>
+        <div className="text-center py-12">Assessment not found</div>
+      </>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <Helmet>
+        <title>{assessment.test_name} - Flow Logic</title>
+      </Helmet>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">{assessment.test_name}</h1>
         <button
@@ -106,6 +126,7 @@ export function AssessmentDetailPage() {
         )}
       </Card>
     </div>
+    </>
   );
 }
 

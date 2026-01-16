@@ -24,8 +24,8 @@ export const subscriptionsApi = {
     try {
       const response = await apiClient.get<Subscription>('/v1/subscriptions');
       return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
+    } catch (error) {
+      if (isApiError(error) && error.response?.status === 404) {
         return null; // Free tier
       }
       throw error;

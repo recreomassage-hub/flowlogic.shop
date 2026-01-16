@@ -1,6 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { validateVideo, ValidationResult } from '../utils/videoValidation';
 
+/**
+ * Типы для ошибок MediaStream API
+ */
+interface MediaStreamError extends Error {
+  name: 'NotAllowedError' | 'PermissionDeniedError' | 'NotFoundError' | 'DevicesNotFoundError' | 'NotReadableError' | 'TrackStartError' | string;
+  constraint?: string;
+}
+
+/**
+ * Расширенный тип для MediaRecorder с дополнительными свойствами
+ */
+interface MediaRecorderWithTimer extends MediaRecorder {
+  timerInterval?: NodeJS.Timeout;
+}
+
 export type RecordingState =
   | 'idle'           // Initial state
   | 'requesting'     // Requesting camera permission
@@ -89,17 +104,19 @@ export function useVideoRecorder(): UseVideoRecorderReturn {
       console.log('[useVideoRecorder] Camera access granted, stream:', mediaStream);
       setStream(mediaStream);
       setState('ready');
-    } catch (err: any) {
+    } catch (err) {
       console.error('[useVideoRecorder] Error requesting camera:', err);
+      const error = err as MediaStreamError;
       
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         setError('Camera permission denied. Please enable camera access in your browser settings.');
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
         setError('Camera not available. Please use a device with a camera.');
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
         setError('Camera is already in use by another application.');
       } else {
-        setError(`Failed to access camera: ${err.message || 'Unknown error'}. Please try again.`);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        setError(`Failed to access camera: ${message}. Please try again.`);
       }
       
       setState('error');
@@ -153,14 +170,18 @@ export function useVideoRecorder(): UseVideoRecorderReturn {
         setValidationResult(validation);
         
         if (!validation.valid) {
-          setError(validation.errors.join(' '));
+          // According to MVP UX rules: Show one helpful suggestion, not technical error codes
+          // Take the first error message (most actionable)
+          const firstError = validation.errors[0] || 'Please check your video and try again.';
+          setError(firstError);
+          setState('error');
+        } else {
+          setState('stopped');
         }
-        
-        setState('stopped');
       };
 
       // Handle errors
-      recorder.onerror = (event: any) => {
+      recorder.onerror = (event: Event) => {
         console.error('MediaRecorder error:', event);
         setError('Recording failed. Please try again.');
         setState('error');
@@ -184,10 +205,11 @@ export function useVideoRecorder(): UseVideoRecorderReturn {
       }, 1000);
 
       // Store interval ID for cleanup
-      (recorderRef.current as any).timerInterval = timerInterval;
-    } catch (err: any) {
+      (recorderRef.current as MediaRecorderWithTimer).timerInterval = timerInterval;
+    } catch (err) {
       console.error('Error starting recording:', err);
-      setError('Failed to start recording. Please try again.');
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to start recording: ${message}. Please try again.`);
       setState('error');
     }
   };
@@ -195,9 +217,9 @@ export function useVideoRecorder(): UseVideoRecorderReturn {
   const stopRecording = (): void => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
       // Clear timer interval if exists
-      const timerInterval = (recorderRef.current as any).timerInterval;
-      if (timerInterval) {
-        clearInterval(timerInterval);
+      const recorderWithTimer = recorderRef.current as MediaRecorderWithTimer;
+      if (recorderWithTimer.timerInterval) {
+        clearInterval(recorderWithTimer.timerInterval);
       }
       recorderRef.current.stop();
     }
@@ -229,11 +251,14 @@ export function useVideoRecorder(): UseVideoRecorderReturn {
       return;
     }
 
-    // Validate video before upload
+    // Validate video before upload (re-validate to ensure still valid)
     const validation = await validateVideo({ blob: videoBlob, duration });
+    setValidationResult(validation);
+    
     if (!validation.valid) {
-      setValidationResult(validation);
-      setError(validation.errors.join(' '));
+      // According to MVP UX rules: Show one helpful suggestion
+      const firstError = validation.errors[0] || 'Please check your video and try again.';
+      setError(firstError);
       setState('error');
       return;
     }
@@ -278,14 +303,14 @@ export function useVideoRecorder(): UseVideoRecorderReturn {
         xhr.timeout = 60000; // 60 seconds
         xhr.send(videoBlob);
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error uploading video:', err);
-      
+      const message = err instanceof Error ? err.message : 'Unknown error';
       const newRetryCount = retryCount + 1;
       setRetryCount(newRetryCount);
       
       if (newRetryCount < 3) {
-        setError(`Upload failed: ${err.message}. You can retry (${newRetryCount}/3 attempts).`);
+        setError(`Upload failed: ${message}. You can retry (${newRetryCount}/3 attempts).`);
         setState('error');
       } else {
         setError('Upload failed after 3 attempts. Please record again.');
