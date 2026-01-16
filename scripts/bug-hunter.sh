@@ -73,29 +73,31 @@ echo "============================"
 if command -v npx &> /dev/null; then
   echo "Running ESLint..."
   set +e  # Temporarily disable exit on error
-  ESLINT_OUTPUT=$(timeout_cmd npx eslint . --format json 2>&1)
+  # Check frontend and backend separately for better performance
+  # Only check src directories, exclude dist/ and node_modules/
+  ESLINT_OUTPUT=""
+  if [ -d "$PROJECT_ROOT/src/frontend/src" ]; then
+    echo "  Checking frontend..."
+    ESLINT_FRONTEND=$(timeout_cmd npx eslint "$PROJECT_ROOT/src/frontend/src" --format compact 2>&1 || echo "")
+    ESLINT_OUTPUT="${ESLINT_OUTPUT}${ESLINT_FRONTEND}"
+  fi
+  if [ -d "$PROJECT_ROOT/src/backend/src" ]; then
+    echo "  Checking backend..."
+    ESLINT_BACKEND=$(timeout_cmd npx eslint "$PROJECT_ROOT/src/backend/src" --format compact 2>&1 || echo "")
+    ESLINT_OUTPUT="${ESLINT_OUTPUT}${ESLINT_BACKEND}"
+  fi
   ESLINT_EXIT=$?
   set +e  # Keep error handling disabled for grep/processing
   
-  if [ -n "$ESLINT_OUTPUT" ] && [ "$ESLINT_OUTPUT" != "null" ]; then
-    if command -v jq &> /dev/null; then
-      echo "$ESLINT_OUTPUT" | jq -r '.[] | .messages[] | select(.severity == 2) | "\(.filePath):\(.line):\(.column) - \(.message)"' 2>/dev/null | while read -r line || true; do
-        if [ -n "$line" ]; then
-          echo -e "${RED}CRITICAL:${NC} $line"
-          CRITICAL_COUNT=$((CRITICAL_COUNT + 1))
-          TOTAL_BUGS=$((TOTAL_BUGS + 1))
-        fi
-      done || true
-    else
-      # Fallback if jq not available
-      echo "$ESLINT_OUTPUT" | grep -i "error" | head -10 | while read -r line || true; do
-        if [ -n "$line" ]; then
-          echo -e "${RED}CRITICAL:${NC} $line"
-          CRITICAL_COUNT=$((CRITICAL_COUNT + 1))
-          TOTAL_BUGS=$((TOTAL_BUGS + 1))
-        fi
-      done || true
-    fi
+  if [ -n "$ESLINT_OUTPUT" ]; then
+    # Process compact format output (faster than JSON)
+    echo "$ESLINT_OUTPUT" | grep -E "Error" | while read -r line || true; do
+      if [ -n "$line" ]; then
+        echo -e "${RED}CRITICAL:${NC} $line"
+        CRITICAL_COUNT=$((CRITICAL_COUNT + 1))
+        TOTAL_BUGS=$((TOTAL_BUGS + 1))
+      fi
+    done || true
   fi
   set -e  # Re-enable exit on error after processing
 else
