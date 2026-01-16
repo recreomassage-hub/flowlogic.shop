@@ -46,8 +46,7 @@ jobs:
       - name: Run Bug Hunter (Fast Mode)
         id: bug-hunter
         run: |
-          chmod +x ./scripts/bug-hunter.sh
-          ./scripts/bug-hunter.sh --mode fast --timeout 60 || true
+          bash ./scripts/bug-hunter.sh --mode fast --timeout 60 || true
         continue-on-error: true
 
       - name: Comment PR with results
@@ -94,7 +93,7 @@ jobs:
 
       - name: Setup AWS CLI (for CloudWatch)
         if: env.AWS_REGION != ''
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -102,14 +101,12 @@ jobs:
 
       - name: Run Bug Hunter (Deep Mode)
         run: |
-          chmod +x ./scripts/bug-hunter.sh
-          ./scripts/bug-hunter.sh --mode deep --timeout 300
+          bash ./scripts/bug-hunter.sh --mode deep --timeout 300
 
       - name: Run CloudWatch Analysis
         if: env.AWS_REGION != ''
         run: |
-          chmod +x ./scripts/bug-hunter-cloudwatch.sh
-          ./scripts/bug-hunter-cloudwatch.sh || true
+          bash ./scripts/bug-hunter-cloudwatch.sh || true
         continue-on-error: true
         env:
           AWS_REGION: ${{ env.AWS_REGION || 'us-east-1' }}
@@ -119,7 +116,7 @@ jobs:
           REPORT_FILE="bug-report-$(date +%Y%m%d).txt"
           echo "# Bug Hunter Report - $(date +%Y-%m-%d)" > "$REPORT_FILE"
           echo "" >> "$REPORT_FILE"
-          ./scripts/bug-hunter.sh --mode deep --timeout 300 >> "$REPORT_FILE" 2>&1 || true
+          bash ./scripts/bug-hunter.sh --mode deep --timeout 300 >> "$REPORT_FILE" 2>&1 || true
           echo "Report generated: $REPORT_FILE"
 
       - name: Upload Report
@@ -128,6 +125,123 @@ jobs:
           name: bug-report-${{ github.run_number }}
           path: bug-report-*.txt
           retention-days: 30
+
+      - name: Install jq (for Solution Rate calculation)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq bc
+
+      - name: Calculate Solution Rate
+        id: solution-rate
+        run: |
+          if [ -f "./scripts/calculate-solution-rate.sh" ]; then
+            SOLUTION_RATE_OUTPUT=$(bash ./scripts/calculate-solution-rate.sh --output-format json 2>&1 || echo '{}')
+            echo "$SOLUTION_RATE_OUTPUT" | jq .
+            
+            # Extract metrics
+            SOLUTION_RATE=$(echo "$SOLUTION_RATE_OUTPUT" | jq -r '.solution_rate // 0')
+            FALSE_POSITIVE_RATE=$(echo "$SOLUTION_RATE_OUTPUT" | jq -r '.false_positive_rate // 0')
+            TOTAL_REPORTED=$(echo "$SOLUTION_RATE_OUTPUT" | jq -r '.total_reported // 0')
+            TOTAL_FIXED=$(echo "$SOLUTION_RATE_OUTPUT" | jq -r '.total_fixed // 0')
+            
+            # Set outputs
+            echo "solution_rate=$SOLUTION_RATE" >> $GITHUB_OUTPUT
+            echo "false_positive_rate=$FALSE_POSITIVE_RATE" >> $GITHUB_OUTPUT
+            echo "total_reported=$TOTAL_REPORTED" >> $GITHUB_OUTPUT
+            echo "total_fixed=$TOTAL_FIXED" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Solution Rate script not found, skipping..."
+            echo "solution_rate=0" >> $GITHUB_OUTPUT
+            echo "false_positive_rate=0" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Check Solution Rate Alerts
+        id: alerts
+        run: |
+          SOLUTION_RATE=${{ steps.solution-rate.outputs.solution_rate }}
+          FALSE_POSITIVE_RATE=${{ steps.solution-rate.outputs.false_positive_rate }}
+          
+          ALERT_SOLUTION_RATE=false
+          ALERT_FALSE_POSITIVE=false
+          
+          # Check Solution Rate threshold (< 60%)
+          if (( $(echo "$SOLUTION_RATE < 60" | bc -l) )); then
+            ALERT_SOLUTION_RATE=true
+            echo "❌ ALERT: Solution Rate is ${SOLUTION_RATE}% (below 60% threshold)"
+          fi
+          
+          # Check False Positive Rate threshold (> 30%)
+          if (( $(echo "$FALSE_POSITIVE_RATE > 30" | bc -l) )); then
+            ALERT_FALSE_POSITIVE=true
+            echo "❌ ALERT: False Positive Rate is ${FALSE_POSITIVE_RATE}% (above 30% threshold)"
+          fi
+          
+          echo "alert_solution_rate=$ALERT_SOLUTION_RATE" >> $GITHUB_OUTPUT
+          echo "alert_false_positive=$ALERT_FALSE_POSITIVE" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Create Solution Rate Summary
+        run: |
+          SOLUTION_RATE=${{ steps.solution-rate.outputs.solution_rate }}
+          FALSE_POSITIVE_RATE=${{ steps.solution-rate.outputs.false_positive_rate }}
+          TOTAL_REPORTED=${{ steps.solution-rate.outputs.total_reported }}
+          TOTAL_FIXED=${{ steps.solution-rate.outputs.total_fixed }}
+          
+          echo "## Solution Rate Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value | Target | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Solution Rate status
+          if (( $(echo "$SOLUTION_RATE >= 70" | bc -l 2>/dev/null || echo "0") )); then
+            SR_STATUS="✅"
+          elif (( $(echo "$SOLUTION_RATE >= 60" | bc -l 2>/dev/null || echo "0") )); then
+            SR_STATUS="⚠️"
+          else
+            SR_STATUS="❌"
+          fi
+          echo "| Solution Rate | ${SOLUTION_RATE}% | ≥ 70% | $SR_STATUS |" >> $GITHUB_STEP_SUMMARY
+          
+          # False Positive Rate status
+          if (( $(echo "$FALSE_POSITIVE_RATE < 20" | bc -l 2>/dev/null || echo "0") )); then
+            FPR_STATUS="✅"
+          elif (( $(echo "$FALSE_POSITIVE_RATE < 30" | bc -l 2>/dev/null || echo "0") )); then
+            FPR_STATUS="⚠️"
+          else
+            FPR_STATUS="❌"
+          fi
+          echo "| False Positive Rate | ${FALSE_POSITIVE_RATE}% | < 20% | $FPR_STATUS |" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Total Reported | $TOTAL_REPORTED | - | - |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Fixed | $TOTAL_FIXED | - | - |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Alerts
+          if [ "${{ steps.alerts.outputs.alert_solution_rate }}" = "true" ]; then
+            echo "### ❌ Alert: Solution Rate Below Threshold" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Solution Rate is ${SOLUTION_RATE}% (target: ≥ 70%, alert: < 60%)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.alerts.outputs.alert_false_positive }}" = "true" ]; then
+            echo "### ❌ Alert: False Positive Rate Above Threshold" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "False Positive Rate is ${FALSE_POSITIVE_RATE}% (target: < 20%, alert: > 30%)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true
+
+      - name: Update Solution Rate Dashboard
+        if: steps.solution-rate.outcome == 'success'
+        run: |
+          if [ -f "./scripts/calculate-solution-rate.sh" ]; then
+            # Generate markdown dashboard
+            bash ./scripts/calculate-solution-rate.sh --output-format markdown > docs/metrics/solution-rate-dashboard.md || true
+            echo "✅ Solution Rate dashboard updated"
+          fi
+        continue-on-error: true
 
       - name: Create Summary
         run: |

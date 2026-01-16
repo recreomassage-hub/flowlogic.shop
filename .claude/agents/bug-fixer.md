@@ -167,11 +167,15 @@ If bug requires 3+ fix attempts:
 - Mark bug as fixed
 - Update issue status to `fixed`
 - Document fix in code comments
+- **Update Beads issue using script:**
+  ```bash
+  ./scripts/update-beads-on-fix.sh <issue-id> "Fix description"
+  ```
 
 **Output:**
 - All quality gates passed: ✅
 - Fix verified and documented
-- Bug issue updated
+- Bug issue updated in Beads
 
 **Update Beads issue:**
 ```json
@@ -179,6 +183,8 @@ If bug requires 3+ fix attempts:
   "status": "fixed",
   "fixed_at": "2026-01-13T11:30:00Z",
   "fix_details": "Added await to fetchUser() call in processUser()",
+  "solution_status": "fixed",
+  "confidence_score": 0.85,
   "quality_gates": {
     "fix_verification": true,
     "tests": true,
@@ -187,6 +193,16 @@ If bug requires 3+ fix attempts:
   }
 }
 ```
+
+**Beads Integration:**
+After successful fix, always call:
+```bash
+./scripts/update-beads-on-fix.sh <beads-issue-id> "<fix-description>"
+```
+This script will:
+- Update the Beads issue with fix description
+- Close the issue if fix is complete
+- Handle errors gracefully (non-blocking)
 
 ### 6. Architecture Escalation
 
