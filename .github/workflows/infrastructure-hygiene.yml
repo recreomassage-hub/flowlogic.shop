@@ -1,0 +1,257 @@
+name: Infrastructure Hygiene Enforcement
+
+on:
+  # Trigger on infrastructure changes
+  push:
+    paths:
+      - 'infrastructure/**'
+      - 'infra/**'
+      - '.github/workflows/infrastructure-hygiene.yml'
+  
+  # Daily scheduled check
+  schedule:
+    - cron: '0 9 * * *'  # 9 AM UTC daily
+  
+  # Pre-merge validation for PRs
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'infrastructure/**'
+      - 'infra/**'
+  
+  # Manual trigger
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  validate-infrastructure:
+    name: Validate Infrastructure Changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyyaml boto3
+      
+      - name: Validate infrastructure-spec.yaml
+        run: |
+          python3 -c "
+          import yaml
+          import sys
+          
+          try:
+              with open('infrastructure/infrastructure-spec.yaml', 'r') as f:
+                  spec = yaml.safe_load(f)
+              
+              # Basic validation
+              assert 'x-aws-inventory-rules' in spec, 'Missing x-aws-inventory-rules'
+              assert 'required_tags' in spec['x-aws-inventory-rules'], 'Missing required_tags'
+              assert 'naming_convention' in spec['x-aws-inventory-rules'], 'Missing naming_convention'
+              
+              print('✅ Infrastructure spec is valid')
+          except Exception as e:
+              print(f'❌ Validation failed: {e}')
+              sys.exit(1)
+          "
+      
+      - name: Check spec syntax
+        run: |
+          if ! python3 -c "import yaml; yaml.safe_load(open('infrastructure/infrastructure-spec.yaml'))" 2>/dev/null; then
+            echo "❌ Invalid YAML syntax in infrastructure-spec.yaml"
+            exit 1
+          fi
+          echo "✅ YAML syntax is valid"
+
+  check-compliance:
+    name: Check Infrastructure Compliance
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.head.ref, 'infrastructure'))
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+        # Note: For production, use OIDC instead of access keys
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyyaml boto3
+          sudo apt-get update && sudo apt-get install -y jq
+      
+      - name: Run compliance check
+        run: |
+          ./scripts/infrastructure-compliance-check.sh
+        continue-on-error: true
+        id: compliance_check
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.compliance_check.outcome == 'failure'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ Infrastructure compliance violations detected. Please review the workflow logs.'
+            })
+
+  detect-drift:
+    name: Detect Resource Drift
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Detect CloudFormation drift
+        run: |
+          echo "🔍 Checking for CloudFormation stack drift..."
+          
+          # Get all CloudFormation stacks
+          STACKS=$(aws cloudformation list-stacks \
+            --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
+            --query 'StackSummaries[?contains(StackName, `flowlogic`)].StackName' \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -z "$STACKS" ]; then
+            echo "ℹ️  No CloudFormation stacks found"
+            exit 0
+          fi
+          
+          DRIFT_DETECTED=false
+          for stack in $STACKS; do
+            echo "  Checking stack: $stack"
+            
+            # Detect drift
+            DRIFT_ID=$(aws cloudformation detect-stack-drift \
+              --stack-name "$stack" \
+              --query 'StackDriftDetectionId' \
+              --output text 2>/dev/null || echo "")
+            
+            if [ -n "$DRIFT_ID" ]; then
+              echo "    Drift detection initiated: $DRIFT_ID"
+              # Wait for detection to complete (simplified - in production use polling)
+              sleep 5
+              
+              DRIFT_STATUS=$(aws cloudformation describe-stack-drift-detection-status \
+                --stack-drift-detection-id "$DRIFT_ID" \
+                --query 'StackDriftStatus' \
+                --output text 2>/dev/null || echo "UNKNOWN")
+              
+              if [ "$DRIFT_STATUS" != "IN_SYNC" ]; then
+                echo "    ⚠️  Stack drift detected: $DRIFT_STATUS"
+                DRIFT_DETECTED=true
+              fi
+            fi
+          done
+          
+          if [ "$DRIFT_DETECTED" = "true" ]; then
+            echo "❌ Resource drift detected in one or more stacks"
+            exit 1
+          else
+            echo "✅ All stacks are in sync"
+          fi
+        continue-on-error: true
+
+  enforce-expiration:
+    name: Enforce Expiration on Dev Resources
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '0 9 * * *'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyyaml boto3
+      
+      - name: Find and cleanup expired dev resources
+        run: |
+          echo "🧹 Checking for expired dev resources..."
+          
+          # This would be integrated with safe-aws-cleanup.py
+          # For now, just report expired resources
+          python3 << EOF
+          import boto3
+          import json
+          from datetime import datetime, timezone
+          
+          client = boto3.client('resourcegroupstaggingapi')
+          
+          # Find dev resources with ExpiresAt tag
+          resources = client.get_resources(
+              TagFilters=[
+                  {'Key': 'Env', 'Values': ['dev']},
+                  {'Key': 'ExpiresAt', 'Values': ['*']}
+              ]
+          )
+          
+          expired = []
+          for resource in resources.get('ResourceTagMappingList', []):
+              tags = {t['Key']: t['Value'] for t in resource.get('Tags', [])}
+              expires_str = tags.get('ExpiresAt', '')
+              
+              if expires_str:
+                  try:
+                      expires = datetime.fromisoformat(expires_str.replace('Z', '+00:00'))
+                      if expires < datetime.now(timezone.utc):
+                          expired.append({
+                              'arn': resource['ResourceARN'],
+                              'name': resource['ResourceARN'].split(':')[-1],
+                              'expires_at': expires_str
+                          })
+                  except:
+                      pass
+          
+          if expired:
+              print(f"⚠️  Found {len(expired)} expired dev resources:")
+              for r in expired:
+                  print(f"  - {r['name']}: expired {r['expires_at']}")
+          else:
+              print("✅ No expired dev resources found")
+          EOF
+        continue-on-error: true

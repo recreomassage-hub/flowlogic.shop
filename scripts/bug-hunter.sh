@@ -188,10 +188,47 @@ if [ "$MODE" = "deep" ] || [ "$REPORT_MODE" = true ]; then
   else
     echo "⚠️  OpenSpec rules parser not found, skipping..."
   fi
+  
+  # 3.5. Infrastructure Compliance Checking (only in deep mode)
+  echo ""
+  echo "📋 Phase 3.5: Infrastructure Compliance Checking"
+  echo "================================================="
+  
+  if [ -f "$SCRIPT_DIR/infrastructure-compliance-check.sh" ]; then
+    echo "Checking infrastructure compliance..."
+    
+    # Run infrastructure compliance check (without creating Beads issues here, Bug Hunter handles that)
+    set +e  # Temporarily disable exit on error
+    INFRA_CHECK_OUTPUT=$("$SCRIPT_DIR/infrastructure-compliance-check.sh" 2>&1)
+    INFRA_CHECK_EXIT=$?
+    set -e  # Re-enable exit on error
+    
+    if [ $INFRA_CHECK_EXIT -eq 0 ]; then
+      echo -e "${GREEN}✓${NC} Infrastructure compliance: PASSED"
+    else
+      echo -e "${YELLOW}⚠️${NC} Infrastructure compliance: FAILED"
+      echo "$INFRA_CHECK_OUTPUT" | grep -E "⚠️|Non-compliant|Expired|Untagged" | head -10 || true
+      
+      # Count infrastructure violations as MEDIUM priority bugs
+      INFRA_VIOLATIONS=$(echo "$INFRA_CHECK_OUTPUT" | grep -c "Non-compliant\|Expired\|Untagged" || echo "0")
+      if [ "$INFRA_VIOLATIONS" -gt 0 ]; then
+        MEDIUM_COUNT=$((MEDIUM_COUNT + INFRA_VIOLATIONS))
+        TOTAL_BUGS=$((TOTAL_BUGS + INFRA_VIOLATIONS))
+        echo "  Infrastructure violations found: $INFRA_VIOLATIONS (counted as MEDIUM priority)"
+      fi
+    fi
+  else
+    echo "⚠️  Infrastructure compliance check script not found, skipping..."
+  fi
 else
   echo ""
   echo "📋 Phase 3: OpenSpec Rules Checking"
   echo "==================================="
+  echo "⏭️  Skipped (fast mode - only critical checks)"
+  
+  echo ""
+  echo "📋 Phase 3.5: Infrastructure Compliance Checking"
+  echo "================================================="
   echo "⏭️  Skipped (fast mode - only critical checks)"
 fi
 

@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-01-18T22:54:20.832171+00:00",
+  "total_resources": 0,
+  "classifications": {},
+  "summary": {
+    "compliant": 0,
+    "non_compliant": 0,
+    "expired": 0,
+    "untagged": 0,
+    "by_env": {
+      "prod": 0,
+      "staging": 0,
+      "dev": 0,
+      "untagged": 0
+    }
+  },
+  "violations": []
+}

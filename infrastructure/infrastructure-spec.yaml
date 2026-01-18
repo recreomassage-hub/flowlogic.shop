@@ -1,0 +1,105 @@
+version: 1.0
+project: FlowLogic
+
+environments:
+  production:
+    aws_account_id: "${AWS_ACCOUNT_ID}"  # Set in CI/CD secrets
+    deletion_protection: true
+    allowed_regions: [us-east-1]
+    
+  staging:
+    aws_account_id: "${AWS_ACCOUNT_ID}"  # Same account or different
+    deletion_protection: false
+    allowed_regions: [us-east-1]
+  
+  dev:
+    aws_account_id: "${AWS_ACCOUNT_ID}"
+    deletion_protection: false
+    allowed_regions: [us-east-1, us-west-2]
+    max_resource_age_days: 30
+
+# AWS Inventory Rules
+x-aws-inventory-rules:
+  required_tags:
+    - name: Project
+      values: [FlowLogic]
+      required: true
+    - name: Env
+      values: [prod, staging, dev, sandbox]
+      required: true
+    - name: Owner
+      pattern: "^(team-backend|team-frontend|devops)$"
+      required: true
+    - name: ExpiresAt
+      format: "ISO8601"
+      required_when:
+        env: [dev, sandbox]
+  
+  lifecycle_policies:
+    dev_resources:
+      max_age_days: 30
+      auto_cleanup: true
+      notification_before_days: 7
+    
+    staging_resources:
+      max_age_days: 90
+      auto_cleanup: false
+      require_manual_review: true
+
+  naming_convention:
+    pattern: "^flowlogic-(prod|staging|dev|sandbox)-[a-z0-9-]+$"
+    examples:
+      - "flowlogic-prod-backend"
+      - "flowlogic-staging-migrations"
+      - "flowlogic-dev-experiment-feature-x"
+
+# Resource Policies
+resource_policies:
+  dynamodb:
+    prod:
+      deletion_policy: Retain
+      point_in_time_recovery: true
+      tags_required: [Env, Owner, BackupSchedule]
+    
+    staging:
+      deletion_policy: Snapshot
+      point_in_time_recovery: false
+      tags_required: [Env, Owner]
+    
+    dev:
+      deletion_policy: Delete
+      tags_required: [Env, ExpiresAt]
+  
+  s3:
+    all_environments:
+      encryption: AES256
+      versioning: true
+      lifecycle_rules: required
+      public_access_block: true
+      tags_required: [Env, Owner]
+  
+  lambda:
+    all_environments:
+      tags_required: [Env, Owner]
+      timeout_max_seconds: 30
+      memory_max_mb: 1024
+  
+  cloudformation:
+    all_environments:
+      tags_required: [Env, Owner, StackPurpose]
+
+# Whitelist для legacy ресурсов (исключения из compliance)
+whitelist:
+  resources:
+    # Legacy ресурсы без тегов (постепенно затегируются)
+    - pattern: ".*legacy.*"
+      reason: "Legacy resource, migration in progress"
+    - pattern: ".*backup.*"
+      reason: "Backup resources, exempt from expiration"
+
+# Cost Optimization Rules
+cost_optimization:
+  unused_resource_threshold_days: 60
+  detect_cost_zombies: true
+  alert_on_cost_spike: true
+  cost_spike_threshold_percent: 50

@@ -1,0 +1,107 @@
+# AWS Inventory Configuration
+# Defines which AWS resources to scan and how to classify them
+
+version: 1.0.0
+description: Configuration for AWS resource inventory scanning and classification
+
+# AWS Regions to scan
+regions:
+  - us-east-1  # Primary region for Flow Logic
+  # Add more regions if needed
+  # - us-west-2
+
+# Resource Types to Scan
+resource_types:
+  # Compute
+  - aws.lambda
+  - aws.ec2
+  
+  # Storage
+  - aws.s3
+  - aws.dynamodb
+  - aws.efs
+  - aws.ebs
+  
+  # Networking
+  - aws.apigateway
+  - aws.elasticloadbalancing
+  - aws.vpc
+  - aws.cloudfront
+  
+  # Security & Auth
+  - aws.cognito
+  - aws.iam
+  - aws.kms
+  - aws.secretsmanager
+  
+  # Monitoring & Logging
+  - aws.cloudwatch
+  - aws.cloudwatch-logs
+  - aws.xray
+  
+  # Messaging
+  - aws.sqs
+  - aws.sns
+  - aws.eventbridge
+
+# Classification Criteria
+classification:
+  # Environment detection
+  env_detection:
+    primary_tag: Env
+    fallback_methods:
+      - naming_convention: "flowlogic-{env}-.*"
+      - default: untagged
+  
+  # Resource categories
+  categories:
+    expired:
+      condition: "Env=dev AND ExpiresAt < today"
+      action: flag_for_cleanup
+    
+    cost_zombie:
+      condition: "last_usage < (today - 60 days)"
+      action: flag_for_review
+      excludes:
+        - resource_types: [aws.dynamodb, aws.s3]
+          conditions: ["Env=prod", "has_lifecycle_policy"]
+    
+    untagged:
+      condition: "missing required tags: Project OR Env"
+      action: flag_for_review
+    
+    non_compliant:
+      condition: "naming_pattern mismatch OR missing required tags"
+      action: flag_for_fix
+
+# Scan Options
+scan_options:
+  parallel_requests: 10
+  timeout_seconds: 300
+  cache_results: true
+  cache_ttl_hours: 24
+  dry_run: true  # Default to dry-run for safety
+
+# Output Configuration
+output:
+  format: json
+  file: "inventory-{timestamp}.json"
+  include_details: true
+  include_tags: true
+  include_metadata: true
+
+# Cost Tracking
+cost_tracking:
+  enabled: true
+  granularity: daily
+  include_untagged_cost: true
+
+# Beads Integration
+beads:
+  enabled: true
+  create_issues_for:
+    - untagged_resources
+    - expired_dev_resources
+    - cost_zombies
+  issue_prefix: "infra:"
+  issue_type: infrastructure
