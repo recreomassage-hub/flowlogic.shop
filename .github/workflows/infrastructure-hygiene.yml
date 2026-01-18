@@ -46,6 +46,11 @@ jobs:
       
       - name: Validate infrastructure-spec.yaml
         run: |
+          if [ ! -f "infrastructure/infrastructure-spec.yaml" ]; then
+            echo "❌ ERROR: infrastructure/infrastructure-spec.yaml not found"
+            exit 1
+          fi
+          
           python3 -c "
           import yaml
           import sys
@@ -76,7 +81,7 @@ jobs:
   check-compliance:
     name: Check Infrastructure Compliance
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.head.ref, 'infrastructure'))
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request != null && contains(github.event.pull_request.head.ref, 'infrastructure'))
     
     steps:
       - name: Checkout
@@ -102,7 +107,7 @@ jobs:
       
       - name: Run compliance check
         run: |
-          ./scripts/infrastructure-compliance-check.sh
+          bash ./scripts/infrastructure-compliance-check.sh
         continue-on-error: true
         id: compliance_check
       
@@ -187,7 +192,7 @@ jobs:
   enforce-expiration:
     name: Enforce Expiration on Dev Resources
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '0 9 * * *'
+    if: github.event_name == 'schedule'
     
     steps:
       - name: Checkout
