@@ -220,7 +220,7 @@ jobs:
           
           # This would be integrated with safe-aws-cleanup.py
           # For now, just report expired resources
-          python3 << EOF
+          python3 << 'PYEOF'
           import boto3
           import json
           from datetime import datetime, timezone
@@ -258,5 +258,5 @@ jobs:
                   print(f"  - {r['name']}: expired {r['expires_at']}")
           else:
               print("✅ No expired dev resources found")
-          EOF
+          PYEOF
         continue-on-error: true
