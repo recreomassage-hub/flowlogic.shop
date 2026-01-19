@@ -212,7 +212,9 @@
         "sqs:DeleteQueue",
         "sqs:GetQueueAttributes",
         "sqs:SetQueueAttributes",
-        "sqs:TagQueue"
+        "sqs:TagQueue",
+        "sqs:GetQueueUrl",
+        "sqs:ListQueues"
       ],
       "Resource": [
         "arn:aws:sqs:us-east-1:*:flowlogic-*"

@@ -157,12 +157,14 @@
         "logs:CreateLogGroup",
         "logs:DescribeLogGroups",
         "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
         "logs:FilterLogEvents",
         "logs:GetLogEvents",
         "logs:DescribeLogStreams"
       ],
       "Resource": [
-        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/flowlogic-production-*"
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/flowlogic-production-*",
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/*flowlogic*"
       ]
     },
     {
@@ -248,7 +250,9 @@
         "sqs:DeleteQueue",
         "sqs:GetQueueAttributes",
         "sqs:SetQueueAttributes",
-        "sqs:TagQueue"
+        "sqs:TagQueue",
+        "sqs:GetQueueUrl",
+        "sqs:ListQueues"
       ],
       "Resource": [
         "arn:aws:sqs:us-east-1:*:flowlogic-production-*"

@@ -158,10 +158,12 @@
       "Action": [
         "logs:CreateLogGroup",
         "logs:DescribeLogGroups",
-        "logs:DeleteLogGroup"
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy"
       ],
       "Resource": [
-        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/flowlogic-*"
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/flowlogic-*",
+        "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/*flowlogic*"
       ]
     },
     {
