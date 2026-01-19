@@ -137,7 +137,51 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: infra/serverless/package-lock.json
+      
+      - name: Install Serverless Framework
+        run: npm install -g serverless@4
+      
+      - name: Configure Serverless Framework Access Key
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+        run: |
+          if [ -n "$SERVERLESS_ACCESS_KEY" ]; then
+            echo "✅ Serverless Framework Access Key found"
+            export SERVERLESS_ACCESS_KEY
+          else
+            echo "⚠️  SERVERLESS_ACCESS_KEY not found in secrets"
+            echo "   Serverless Framework v4 requires an access key"
+            exit 1
+          fi
+
+      - name: Install dependencies (Backend)
+        run: |
+          if [ -f "src/backend/package.json" ]; then
+            echo "📦 Installing backend dependencies..."
+            cd src/backend
+            npm ci || npm install
+          fi
+
+      - name: Build TypeScript backend
+        run: |
+          if [ -f "src/backend/package.json" ]; then
+            echo "📦 Building backend..."
+            cd src/backend
+            npm run build || {
+              echo "❌ Backend build failed"
+              exit 1
+            }
+            echo "✅ Backend build successful"
+          else
+            echo "⚠️  Backend not found, skipping build..."
+          fi
+
+      - name: Install dependencies (Serverless)
+        working-directory: infra/serverless
+        run: npm ci
       
       - name: Validate serverless configuration
         run: |
