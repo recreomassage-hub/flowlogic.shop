@@ -1,120 +1,118 @@
-# CloudWatch Monitoring и Alerts для Flow Logic Backend
-
 Resources:
-  # CloudWatch Log Group для Lambda функции
-  ApiLogGroup:
-    Type: AWS::Logs::LogGroup
+  # SNS Topic для reliability alerts
+  ReliabilityAlertsTopic:
+    Type: AWS::SNS::Topic
     Properties:
-      LogGroupName: /aws/lambda/flowlogic-backend-${self:provider.stage}-api
-      RetentionInDays: 14
+      TopicName: flowlogic-${self:provider.stage}-reliability-alerts
+      DisplayName: FlowLogic Reliability Alerts
+      Subscription:
+        - Protocol: email
+          Endpoint: devops@flowlogic.shop
+      Tags:
+        - Key: Environment
+          Value: ${self:provider.stage}
+        - Key: Purpose
+          Value: Reliability and monitoring alerts
 
-  # CloudWatch Alarm: Error Rate
-  ErrorRateAlarm:
+  # CloudWatch Alarms для критических метрик
+  LambdaErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: flowlogic-${self:provider.stage}-error-rate
-      AlarmDescription: "Alarm when error rate exceeds 5%"
+      AlarmName: flowlogic-${self:provider.stage}-lambda-errors
+      AlarmDescription: "P0: Lambda error rate > 10/min"
       MetricName: Errors
       Namespace: AWS/Lambda
       Statistic: Sum
-      Period: 300  # 5 minutes
+      Period: 60
       EvaluationPeriods: 1
-      Threshold: 5
+      Threshold: 10
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ReliabilityAlertsTopic
       Dimensions:
         - Name: FunctionName
-          Value: flowlogic-backend-${self:provider.stage}-api
-      AlarmActions:
-        - !Ref ErrorRateSNS
-      TreatMissingData: notBreaching
+          Value: ${self:service}-${self:provider.stage}-api
 
-  # CloudWatch Alarm: Duration
-  DurationAlarm:
+  ApiGateway5xxAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: flowlogic-${self:provider.stage}-duration
-      AlarmDescription: "Alarm when function duration exceeds 5 seconds"
-      MetricName: Duration
-      Namespace: AWS/Lambda
-      Statistic: Average
+      AlarmName: flowlogic-${self:provider.stage}-api-5xx
+      AlarmDescription: "P0: API Gateway 5xx errors > 20 in 5 min"
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
       Period: 300
       EvaluationPeriods: 2
-      Threshold: 5000  # 5 seconds in milliseconds
+      Threshold: 20
       ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: FunctionName
-          Value: flowlogic-backend-${self:provider.stage}-api
-      AlarmActions:
-        - !Ref DurationSNS
       TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ReliabilityAlertsTopic
+      Dimensions:
+        - Name: ApiName
+          Value: ${self:provider.stage}-${self:service}
 
-  # CloudWatch Alarm: Throttles
-  ThrottleAlarm:
+  DynamoDBThrottlingAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: flowlogic-${self:provider.stage}-throttles
-      AlarmDescription: "Alarm when function is throttled"
-      MetricName: Throttles
-      Namespace: AWS/Lambda
+      AlarmName: flowlogic-${self:provider.stage}-dynamodb-throttles
+      AlarmDescription: "P0: DynamoDB throttling detected"
+      MetricName: UserErrors
+      Namespace: AWS/DynamoDB
       Statistic: Sum
       Period: 300
       EvaluationPeriods: 1
-      Threshold: 1
+      Threshold: 5
       ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ReliabilityAlertsTopic
+      Dimensions:
+        - Name: TableName
+          Value: ${self:custom.tables.users}
+
+  ApiLatencyP95Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-${self:provider.stage}-api-latency-p95
+      AlarmDescription: "P1: API P95 latency > 1s"
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ReliabilityAlertsTopic
       Dimensions:
         - Name: FunctionName
-          Value: flowlogic-backend-${self:provider.stage}-api
-      AlarmActions:
-        - !Ref ThrottleSNS
+          Value: ${self:service}-${self:provider.stage}-api
+
+  DLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: flowlogic-${self:provider.stage}-dlq-depth
+      AlarmDescription: "P0: DLQ has messages (failed Lambda executions)"
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
       TreatMissingData: notBreaching
-
-  # SNS Topic для алертов
-  ErrorRateSNS:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: flowlogic-${self:provider.stage}-error-alerts
-      DisplayName: Flow Logic ${self:provider.stage} Error Alerts
-
-  DurationSNS:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: flowlogic-${self:provider.stage}-duration-alerts
-      DisplayName: Flow Logic ${self:provider.stage} Duration Alerts
-
-  ThrottleSNS:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: flowlogic-${self:provider.stage}-throttle-alerts
-      DisplayName: Flow Logic ${self:provider.stage} Throttle Alerts
-
-  # SNS Subscription (email) - опционально
-  # ErrorRateSubscription:
-  #   Type: AWS::SNS::Subscription
-  #   Properties:
-  #     TopicArn: !Ref ErrorRateSNS
-  #     Protocol: email
-  #     Endpoint: your-email@example.com
+      AlarmActions:
+        - !Ref ReliabilityAlertsTopic
+      Dimensions:
+        - Name: QueueName
+          Value: flowlogic-${self:provider.stage}-processing-dlq
 
 Outputs:
-  ErrorRateAlarmArn:
-    Description: "ARN of Error Rate Alarm"
-    Value: !Ref ErrorRateAlarm
+  ReliabilityAlertsTopicArn:
+    Description: ARN of SNS topic for reliability alerts
+    Value: !Ref ReliabilityAlertsTopic
     Export:
-      Name: ${self:provider.stage}-ErrorRateAlarmArn
-
-  DurationAlarmArn:
-    Description: "ARN of Duration Alarm"
-    Value: !Ref DurationAlarm
-    Export:
-      Name: ${self:provider.stage}-DurationAlarmArn
-
-  ThrottleAlarmArn:
-    Description: "ARN of Throttle Alarm"
-    Value: !Ref ThrottleAlarm
-    Export:
-      Name: ${self:provider.stage}-ThrottleAlarmArn
-
-
-
-
-
+      Name: flowlogic-${self:provider.stage}-reliability-alerts-topic-arn
