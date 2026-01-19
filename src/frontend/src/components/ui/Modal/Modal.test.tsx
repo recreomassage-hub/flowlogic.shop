@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as ReactDOM from 'react-dom';
-import { Modal } from './Modal';
+import { Modal } from './index';
 
 // Mock React Portal
 const originalCreatePortal = ReactDOM.createPortal;

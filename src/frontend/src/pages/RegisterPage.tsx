@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuthStore } from '../store/authStore';
-import { Input } from '../components/ui/Input';
-import { validateEmail, validatePassword, getPasswordRequirements } from '../utils/authValidation';
+import { Input } from '../components/ui/Input/index';
+import { validateEmail, validatePassword, getPasswordRequirements } from '../utils/authValidation.ts';
 import { isApiError, getErrorMessage } from '../api/types';
 
 export function RegisterPage() {
