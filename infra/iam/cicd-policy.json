@@ -73,6 +73,22 @@
       ]
     },
     {
+      "Sid": "S3ServerlessFrameworkDeploymentBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:PutBucketPolicy",
+        "s3:GetBucketPolicy",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketVersioning",
+        "s3:ListBucket",
+        "s3:DeleteBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::serverless-framework-deployments-*"
+      ]
+    },
+    {
       "Sid": "S3DeploymentBucketObjects",
       "Effect": "Allow",
       "Action": [
@@ -85,7 +101,9 @@
         "arn:aws:s3:::*-serverless-deployment-bucket-*",
         "arn:aws:s3:::*-serverless-deployment-bucket-*/*",
         "arn:aws:s3:::serverless-deployment-buckets-*",
-        "arn:aws:s3:::serverless-deployment-buckets-*/*"
+        "arn:aws:s3:::serverless-deployment-buckets-*/*",
+        "arn:aws:s3:::serverless-framework-deployments-*",
+        "arn:aws:s3:::serverless-framework-deployments-*/*"
       ]
     },
     {
