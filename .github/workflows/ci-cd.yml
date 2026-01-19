@@ -280,6 +280,21 @@ jobs:
         continue-on-error: true
         id: aws-config-oidc
       
+      # Step 1.5: Validate AWS credentials (pre-deploy check)
+      - name: Validate AWS credentials
+        if: steps.aws-config-oidc.outcome == 'success'
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          ENVIRONMENT: ${{ github.environment || 'production' }}
+        run: |
+          echo "🔍 Validating AWS credentials before deployment..."
+          if [ -f "scripts/validate-aws-credentials.sh" ]; then
+            ./scripts/validate-aws-credentials.sh "$ENVIRONMENT"
+          else
+            echo "⚠️  WARNING: validate-aws-credentials.sh not found, skipping validation"
+          fi
+        continue-on-error: false
+      
       # Step 2: Load ALL SSM Parameters Early (when OIDC token is fresh)
       - name: Load ALL SSM Parameters Early
         id: load-secrets
@@ -326,10 +341,65 @@ jobs:
           key: ssm-params-${{ github.sha }}
           fail-on-cache-miss: false
       
-      # Step 4: Fallback to Access Keys if OIDC failed
+      # Step 4: Check fallback expiry (14 days from first OIDC)
+      - name: Check fallback expiry
+        if: steps.aws-config-oidc.outcome != 'success' && steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true'
+        id: check-fallback-expiry
+        run: |
+          echo "🔍 Checking fallback expiry (14 days from first OIDC)..."
+          
+          # Get first OIDC deployment date from SSM Parameter Store
+          # Use Access Keys if OIDC failed (temporary access for this check)
+          if [ -n "${{ secrets.AWS_ACCESS_KEY_ID_PROD }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}" ]; then
+            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID_PROD }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
+            export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          fi
+          
+          export AWS_REGION=us-east-1
+          
+          # Try to get first OIDC date from SSM
+          FIRST_OIDC_DATE=$(aws ssm get-parameter \
+            --name "/flowlogic/cicd/first-oidc-deployment-date" \
+            --query "Parameter.Value" \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -z "$FIRST_OIDC_DATE" ]; then
+            echo "⚠️  First OIDC date not found in SSM Parameter Store"
+            echo "   Assuming first OIDC deployment is today (fallback allowed for 14 days)"
+            FIRST_OIDC_DATE=$(date +%Y-%m-%d)
+            echo "   Set FIRST_OIDC_DATE=$FIRST_OIDC_DATE"
+            echo "   Run: ./scripts/save-first-oidc-date.sh to set the actual date"
+          else
+            echo "   First OIDC deployment date: $FIRST_OIDC_DATE"
+          fi
+          
+          # Check expiry using script
+          if [ -f "scripts/check-fallback-expiry.sh" ]; then
+            if ./scripts/check-fallback-expiry.sh "$FIRST_OIDC_DATE"; then
+              echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+              echo "✅ Fallback is still valid"
+            else
+              echo "FALLBACK_ALLOWED=false" >> $GITHUB_ENV
+              echo "❌ Fallback has expired (14 days passed)"
+              echo ""
+              echo "📋 Solution:"
+              echo "   1. Ensure OIDC is properly configured"
+              echo "   2. Ensure AWS_ROLE_ARN is set in GitHub Environment"
+              echo "   3. See: docs/deployment/aws-oidc-setup.md"
+              exit 1
+            fi
+          else
+            echo "⚠️  check-fallback-expiry.sh not found, allowing fallback (manual check required)"
+            echo "FALLBACK_ALLOWED=true" >> $GITHUB_ENV
+          fi
+      
+      # Step 5: Configure AWS credentials (Access Keys Fallback)
       - name: Configure AWS credentials (Access Keys Fallback)
-        # Prefer Access Keys for SSM Parameter Store access (more reliable than OIDC)
-        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success'
+        # Fallback разрешен только если OIDC не работает И fallback не истек (<14 дней)
+        if: steps.check-aws-creds.outputs.HAS_ACCESS_KEYS == 'true' && steps.aws-config-oidc.outcome != 'success' && (steps.check-fallback-expiry.outcome == 'success' && env.FALLBACK_ALLOWED == 'true')
         uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
@@ -337,11 +407,12 @@ jobs:
           aws-region: us-east-1
         id: aws-config-keys
       
-      # Step 5: Load secrets with Access Keys fallback
+      # Step 6: Load secrets with Access Keys fallback
       - name: Load SSM Parameters (Fallback)
         if: steps.aws-config-oidc.outcome != 'success' && steps.aws-config-keys.outcome == 'success'
         run: |
           echo "⚠️  Using Access Keys fallback for SSM access"
+          echo "   ⚠️  WARNING: Fallback should be disabled after 14 days from first OIDC deployment"
           
           PARAMETERS=(
             "/flowlogic/production/database/url"
@@ -360,9 +431,18 @@ jobs:
           
           echo "SSM_PARAMETERS=$(cat ssm_parameters.json | jq -c .)" >> $GITHUB_ENV
           
-          # Send fallback usage metric
-          if [ -f "scripts/send-oidc-metrics.sh" ]; then
+          # Send fallback usage metric and log
+          ENVIRONMENT="${{ github.environment || 'production' }}"
+          if [ -f "scripts/send-fallback-metric.sh" ]; then
+            ./scripts/send-fallback-metric.sh "$ENVIRONMENT" || true
+          elif [ -f "scripts/send-oidc-metrics.sh" ]; then
             ./scripts/send-oidc-metrics.sh SSMFallbackUsage 1 Count || true
+          fi
+          
+          # Log to CloudWatch Logs
+          if [ -f "scripts/send-fallback-metric.sh" ]; then
+            # Script already handles logging
+            echo "✅ Fallback usage logged to CloudWatch"
           fi
       
       # Step 6: Verify secrets loaded
@@ -440,10 +520,37 @@ jobs:
           role-session-name: github-${{ github.run_id }}-serverless
         id: aws-refresh-oidc
       
+      # Step 7.5: Ensure AWS credentials are available for Serverless Framework
+      - name: Configure AWS credentials for Serverless (Access Keys fallback)
+        if: steps.aws-config-oidc.outcome != 'success' && steps.aws-config-keys.outcome == 'success'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+        id: aws-config-for-serverless
+      
       - name: Deploy Backend (Serverless)
         run: |
           if [ -d "infra/serverless" ]; then
             cd infra/serverless
+            
+            echo "🔍 Debug: Pre-deployment checks..."
+            echo "  Working directory: $(pwd)"
+            echo "  AWS credentials check:"
+            if [ -n "${AWS_ACCESS_KEY_ID:-}" ] && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+              echo "    ✅ AWS_ACCESS_KEY_ID is set (length: ${#AWS_ACCESS_KEY_ID})"
+              echo "    ✅ AWS_SECRET_ACCESS_KEY is set (length: ${#AWS_SECRET_ACCESS_KEY})"
+            else
+              echo "    ❌ AWS credentials NOT set!"
+              echo "    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-NOT SET}"
+              echo "    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:+SET (hidden)}"
+            fi
+            echo "  AWS region: ${AWS_REGION:-NOT SET}"
+            echo "  AWS identity:"
+            aws sts get-caller-identity 2>&1 || echo "    ⚠️  Failed to get AWS identity"
+            echo ""
+            
             echo "📦 Installing Serverless Framework..."
             npm install -g serverless@latest || {
               echo "⚠️  Failed to install serverless globally, trying local install..."
@@ -459,24 +566,50 @@ jobs:
               echo "❌ serverless.yml not found!"
               exit 1
             fi
+            
+            echo "🔍 Debug: Checking deployment bucket..."
+            # Extract deployment bucket name from serverless.yml if specified
+            DEPLOYMENT_BUCKET=$(grep -i "deploymentBucket" serverless.yml | head -1 | sed 's/.*deploymentBucket.*: *//' | tr -d ' "{}' || echo "")
+            if [ -n "$DEPLOYMENT_BUCKET" ]; then
+              echo "  Deployment bucket from config: $DEPLOYMENT_BUCKET"
+              echo "  Checking bucket existence and permissions..."
+              aws s3 ls "s3://$DEPLOYMENT_BUCKET" 2>&1 || echo "    ⚠️  Cannot access bucket (may not exist or no permissions)"
+            else
+              echo "  No explicit deployment bucket in config (Serverless will create/use default)"
+              # Serverless Framework uses: serverless-deployment-bucket-<random>
+              # Check if we can list buckets
+              echo "  Checking S3 permissions..."
+              aws s3 ls 2>&1 | head -5 || echo "    ⚠️  Cannot list S3 buckets (no permissions)"
+            fi
+            echo ""
+            
             echo "🔍 Validating serverless.yml configuration..."
             npx serverless print --stage production || {
               echo "❌ Serverless configuration validation failed"
               exit 1
             }
             echo "🚀 Deploying to production..."
-            npx serverless deploy --stage production || {
+            npx serverless deploy --stage production --verbose || {
               echo "❌ Deployment failed"
+              echo ""
+              echo "🔍 Debug: Post-failure diagnostics..."
+              echo "  AWS identity:"
+              aws sts get-caller-identity 2>&1 || echo "    ⚠️  Failed"
+              echo "  S3 bucket permissions test:"
+              aws s3 ls 2>&1 | head -3 || echo "    ⚠️  Cannot list buckets"
               exit 1
             }
           else
             echo "⚠️  infra/serverless directory not found, skipping deployment"
           fi
         env:
-          AWS_ACCESS_KEY_ID: ${{ steps.aws-config-keys.outcome == 'success' && (secrets.AWS_ACCESS_KEY_ID_PROD != '' && secrets.AWS_ACCESS_KEY_ID_PROD || secrets.AWS_ACCESS_KEY_ID) || '' }}
-          AWS_SECRET_ACCESS_KEY: ${{ steps.aws-config-keys.outcome == 'success' && (secrets.AWS_SECRET_ACCESS_KEY_PROD != '' && secrets.AWS_SECRET_ACCESS_KEY_PROD || secrets.AWS_SECRET_ACCESS_KEY) || '' }}
+          # For OIDC: credentials are set by aws-actions/configure-aws-credentials action
+          # For Access Keys: pass via environment variables
+          # Serverless Framework will use AWS SDK default credential chain (works for both)
           AWS_DEFAULT_REGION: us-east-1
           AWS_REGION: us-east-1
+          # Ensure Serverless Framework uses AWS SDK default credential chain
+          AWS_SDK_LOAD_CONFIG: 1
       
       - name: Deploy Frontend (Vercel)
         run: |
