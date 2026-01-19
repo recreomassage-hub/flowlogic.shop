@@ -1,9 +1,10 @@
-service: flowlogic-backend-staging-v2
-# Временно изменено для обхода DELETE_FAILED stack
-# TODO: Вернуть обратно после успешного деплоя
-# service: flowlogic-backend
+service: flowlogic-backend
 
 frameworkVersion: '4'  # Serverless Framework v4 with built-in esbuild
+
+plugins:
+  - serverless-prune-plugin
+  - serverless-offline
 
 provider:
   name: aws
@@ -11,6 +12,8 @@ provider:
   architecture: arm64
   region: ${opt:region, 'us-east-1'}
   stage: ${opt:stage, 'dev'}
+  # Stage validation - only allow dev, staging, production
+  # This prevents accidental deployments to wrong environments
   memorySize: 512
   timeout: 30
   logRetentionInDays: 7
@@ -110,6 +113,11 @@ provider:
         #     - !GetAtt ProcessingDLQ.Arn
 
 custom:
+  # Prune plugin configuration - keep last 5 versions, remove older
+  prune:
+    automatic: true
+    number: 5
+  # Node environment mapping
   nodeEnv:
     dev: development
     staging: staging

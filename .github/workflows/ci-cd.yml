@@ -139,6 +139,30 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Validate serverless configuration
+        run: |
+          echo "🔍 Validating serverless.yml configuration..."
+          if [ -f "scripts/validate-serverless-config.sh" ]; then
+            ./scripts/validate-serverless-config.sh || {
+              echo "❌ Serverless configuration validation failed"
+              exit 1
+            }
+          else
+            echo "⚠️  validate-serverless-config.sh not found, skipping validation"
+          fi
+
+      - name: Run Bug Hunter (pre-deploy check)
+        run: |
+          echo "🔍 Running Bug Hunter (fast mode)..."
+          if [ -f "scripts/bug-hunter.sh" ]; then
+            ./scripts/bug-hunter.sh --mode fast || {
+              echo "⚠️  Bug Hunter found issues, but continuing deployment"
+              echo "   Review issues manually after deployment"
+            }
+          else
+            echo "⚠️  bug-hunter.sh not found, skipping Bug Hunter check"
+          fi
+
       - name: Deploy Backend (Serverless)
         run: |
           if [ -d "infra/serverless" ]; then
@@ -153,8 +177,12 @@ jobs:
             export SERVERLESS_ACCESS_KEY
             echo "📦 Installing dependencies..."
             npm install
-            echo "🚀 Deploying to staging..."
-            serverless deploy --stage staging
+            echo "🚀 Deploying to staging using npm scripts..."
+            echo "   This will run pre-deploy checks automatically"
+            npm run deploy:staging || {
+              echo "❌ Deployment failed"
+              exit 1
+            }
           else
             echo "⚠️  infra/serverless directory not found, skipping deployment"
           fi
@@ -597,12 +625,29 @@ jobs:
             echo ""
             
             echo "🔍 Validating serverless.yml configuration..."
-            npx serverless print --stage production || {
-              echo "❌ Serverless configuration validation failed"
-              exit 1
-            }
-            echo "🚀 Deploying to production..."
-            npx serverless deploy --stage production --verbose || {
+            if [ -f "../scripts/validate-serverless-config.sh" ]; then
+              ../scripts/validate-serverless-config.sh || {
+                echo "❌ Serverless configuration validation failed"
+                exit 1
+              }
+            else
+              echo "⚠️  validate-serverless-config.sh not found, using serverless print"
+              npx serverless print --stage production || {
+                echo "❌ Serverless configuration validation failed"
+                exit 1
+              }
+            fi
+            
+            echo "🔍 Running Bug Hunter (fast mode)..."
+            if [ -f "../scripts/bug-hunter.sh" ]; then
+              ../scripts/bug-hunter.sh --mode fast || {
+                echo "⚠️  Bug Hunter found issues, but continuing deployment"
+              }
+            fi
+            
+            echo "🚀 Deploying to production using npm scripts..."
+            echo "   This will run pre-deploy checks automatically"
+            npm run deploy:prod || {
               echo "❌ Deployment failed"
               echo ""
               echo "🔍 Debug: Post-failure diagnostics..."

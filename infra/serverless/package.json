@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "Serverless Framework configuration for Flow Logic backend",
   "scripts": {
-    "deploy:dev": "serverless deploy --stage dev",
-    "deploy:staging": "serverless deploy --stage staging",
-    "deploy:prod": "serverless deploy --stage prod",
+    "pre-deploy": "cd ../.. && ./scripts/validate-serverless-config.sh && ./scripts/bug-hunter.sh --mode fast",
+    "pre-deploy:dev": "npm run pre-deploy",
+    "pre-deploy:staging": "npm run pre-deploy",
+    "pre-deploy:prod": "npm run pre-deploy",
+    "deploy:dev": "npm run pre-deploy:dev && serverless deploy --stage dev",
+    "deploy:staging": "npm run pre-deploy:staging && serverless deploy --stage staging",
+    "deploy:prod": "npm run pre-deploy:prod && serverless deploy --stage prod",
     "post-deploy:dev": "cd ../.. && ./scripts/post_deploy.sh dev",
     "post-deploy:staging": "cd ../.. && ./scripts/post_deploy.sh staging",
     "post-deploy:prod": "cd ../.. && ./scripts/post_deploy.sh production",
@@ -21,12 +25,7 @@
   },
   "devDependencies": {
     "serverless": "^4.0.0",
-    "serverless-offline": "^14.4.0"
+    "serverless-offline": "^14.4.0",
+    "serverless-prune-plugin": "^2.1.0"
   }
 }
-
-
-
-
-
-

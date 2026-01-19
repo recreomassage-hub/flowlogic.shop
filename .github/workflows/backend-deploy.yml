@@ -196,12 +196,44 @@ jobs:
             ./scripts/send-fallback-metric.sh dev || true
           fi
 
+      - name: Validate serverless configuration
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "🔍 Validating serverless.yml configuration..."
+          if [ -f "scripts/validate-serverless-config.sh" ]; then
+            ./scripts/validate-serverless-config.sh || {
+              echo "❌ Serverless configuration validation failed"
+              exit 1
+            }
+          else
+            echo "⚠️  validate-serverless-config.sh not found, skipping validation"
+          fi
+
+      - name: Run Bug Hunter (pre-deploy check)
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "🔍 Running Bug Hunter (fast mode)..."
+          if [ -f "scripts/bug-hunter.sh" ]; then
+            ./scripts/bug-hunter.sh --mode fast || {
+              echo "⚠️  Bug Hunter found issues, but continuing deployment"
+              echo "   Review issues manually after deployment"
+            }
+          else
+            echo "⚠️  bug-hunter.sh not found, skipping Bug Hunter check"
+          fi
+
       - name: Deploy to AWS (Dev)
         if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         working-directory: infra/serverless
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-        run: serverless deploy --stage dev --verbose
+        run: |
+          echo "🚀 Deploying to dev using npm scripts..."
+          echo "   This will run pre-deploy checks automatically"
+          npm run deploy:dev || {
+            echo "❌ Deployment failed"
+            exit 1
+          }
 
       - name: Run post-deploy checks
         if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
@@ -382,14 +414,50 @@ jobs:
             ./scripts/send-fallback-metric.sh staging || true
           fi
 
+      - name: Validate serverless configuration
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "🔍 Validating serverless.yml configuration..."
+          if [ -f "scripts/validate-serverless-config.sh" ]; then
+            ./scripts/validate-serverless-config.sh || {
+              echo "❌ Serverless configuration validation failed"
+              exit 1
+            }
+          else
+            echo "⚠️  validate-serverless-config.sh not found, skipping validation"
+          fi
+
+      - name: Run Bug Hunter (pre-deploy check)
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "🔍 Running Bug Hunter (fast mode)..."
+          if [ -f "scripts/bug-hunter.sh" ]; then
+            ./scripts/bug-hunter.sh --mode fast || {
+              echo "⚠️  Bug Hunter found issues, but continuing deployment"
+              echo "   Review issues manually after deployment"
+            }
+          else
+            echo "⚠️  bug-hunter.sh not found, skipping Bug Hunter check"
+          fi
+
       - name: Deploy to AWS (Staging)
         if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         working-directory: infra/serverless
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
         run: |
-          echo "=== Deploying using direct CloudFormation (bypassing Serverless Framework change sets) ==="
-          echo "Workaround for ResourceExistenceCheck bug in Serverless Framework change sets"
-          echo "Step 1: Package with Serverless Framework"
-          serverless package --stage staging --verbose
+          echo "🚀 Deploying to staging using npm scripts..."
+          echo "   This will run pre-deploy checks automatically"
+          npm run deploy:staging || {
+            echo "❌ Deployment failed"
+            echo ""
+            echo "🔍 Debug: Post-failure diagnostics..."
+            echo "  AWS identity:"
+            aws sts get-caller-identity 2>&1 || echo "    ⚠️  Failed"
+            echo "  Stack status:"
+            aws cloudformation describe-stacks --stack-name flowlogic-backend-staging --region us-east-1 --query 'Stacks[0].StackStatus' --output text 2>&1 || echo "    ⚠️  Stack not found"
+            exit 1
+          }
           echo "Step 2: Determine stack name from service name"
           SERVICE_NAME=$(grep "^service:" serverless.yml | awk '{print $2}' | tr -d '"')
           STACK_NAME="${SERVICE_NAME}-staging"
@@ -686,12 +754,50 @@ jobs:
             ./scripts/send-fallback-metric.sh production || true
           fi
 
+      - name: Validate serverless configuration
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "🔍 Validating serverless.yml configuration..."
+          if [ -f "scripts/validate-serverless-config.sh" ]; then
+            ./scripts/validate-serverless-config.sh || {
+              echo "❌ Serverless configuration validation failed"
+              exit 1
+            }
+          else
+            echo "⚠️  validate-serverless-config.sh not found, skipping validation"
+          fi
+
+      - name: Run Bug Hunter (pre-deploy check)
+        if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
+        run: |
+          echo "🔍 Running Bug Hunter (fast mode)..."
+          if [ -f "scripts/bug-hunter.sh" ]; then
+            ./scripts/bug-hunter.sh --mode fast || {
+              echo "⚠️  Bug Hunter found issues, but continuing deployment"
+              echo "   Review issues manually after deployment"
+            }
+          else
+            echo "⚠️  bug-hunter.sh not found, skipping Bug Hunter check"
+          fi
+
       - name: Deploy to AWS (Production)
         if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
         working-directory: infra/serverless
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-        run: serverless deploy --stage production --verbose
+        run: |
+          echo "🚀 Deploying to production using npm scripts..."
+          echo "   This will run pre-deploy checks automatically"
+          npm run deploy:prod || {
+            echo "❌ Deployment failed"
+            echo ""
+            echo "🔍 Debug: Post-failure diagnostics..."
+            echo "  AWS identity:"
+            aws sts get-caller-identity 2>&1 || echo "    ⚠️  Failed"
+            echo "  Stack status:"
+            aws cloudformation describe-stacks --stack-name flowlogic-backend-production --region us-east-1 --query 'Stacks[0].StackStatus' --output text 2>&1 || echo "    ⚠️  Stack not found"
+            exit 1
+          }
 
       - name: Run post-deploy checks
         if: steps.aws-config-oidc.outcome == 'success' || steps.aws-config-keys.outcome == 'success'
