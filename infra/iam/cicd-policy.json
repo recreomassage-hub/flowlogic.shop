@@ -73,6 +73,22 @@
       ]
     },
     {
+      "Sid": "S3DeploymentBucketObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::*-serverless-deployment-bucket-*",
+        "arn:aws:s3:::*-serverless-deployment-bucket-*/*",
+        "arn:aws:s3:::serverless-deployment-buckets-*",
+        "arn:aws:s3:::serverless-deployment-buckets-*/*"
+      ]
+    },
+    {
       "Sid": "CloudFormationDeployment",
       "Effect": "Allow",
       "Action": [
