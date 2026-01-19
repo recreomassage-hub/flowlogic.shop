@@ -32,7 +32,7 @@ export function VerifyEmailPage() {
     setError(null);
 
     try {
-      const response = await authApi.verify({ email, code });
+      const response: { message: string; alreadyConfirmed?: boolean } = await authApi.verify({ email, code });
       // Если пользователь уже подтвержден, показываем успех и перенаправляем
       if (response.alreadyConfirmed) {
         setSuccess(true);

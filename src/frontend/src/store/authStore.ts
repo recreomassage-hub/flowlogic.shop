@@ -90,7 +90,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           console.log('[AuthStore] Calling authApi.register...');
-          const response = await authApi.register({
+          const response: RegisterResponse = await authApi.register({
             email,
             password,
             name,
