@@ -117,13 +117,21 @@
         "cloudformation:DescribeStackResources",
         "cloudformation:DescribeStackResource",
         "cloudformation:GetTemplate",
-        "cloudformation:ValidateTemplate",
         "cloudformation:ListStacks"
       ],
       "Resource": [
         "arn:aws:cloudformation:us-east-1:*:stack/flowlogic-*/*",
         "arn:aws:cloudformation:us-east-1:*:stack/flowlogic-backend-*/*"
       ]
+    },
+    {
+      "Sid": "CloudFormationGlobal",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:ValidateTemplate",
+        "cloudformation:EstimateTemplateCost"
+      ],
+      "Resource": "*"
     },
     {
       "Sid": "IAMRoleManagement",
