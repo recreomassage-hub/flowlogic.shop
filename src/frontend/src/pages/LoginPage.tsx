@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuthStore } from '../store/authStore';
-import { Input } from '../components/ui/Input/index';
-import { validateEmail } from '../utils/authValidation.ts';
+import { Input } from '../components/ui/Input';
+import { validateEmail } from '../utils/authValidation';
 import { isApiError, getErrorMessage } from '../api/types';
 
 export function LoginPage() {

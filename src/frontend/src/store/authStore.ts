@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { User, RegisterResponse } from '../api/auth.ts';
+import { User, RegisterResponse } from '../api/auth';
 import { authApi } from '../api/auth';
 import { isApiError, getErrorMessage } from '../api/types';
 
