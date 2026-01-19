@@ -134,6 +134,19 @@
       ]
     },
     {
+      "Sid": "SSMServerlessFramework",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:PutParameter",
+        "ssm:DescribeParameters"
+      ],
+      "Resource": [
+        "arn:aws:ssm:us-east-1:*:parameter/serverless-framework/*"
+      ]
+    },
+    {
       "Sid": "EventBridgeManagement",
       "Effect": "Allow",
       "Action": [
