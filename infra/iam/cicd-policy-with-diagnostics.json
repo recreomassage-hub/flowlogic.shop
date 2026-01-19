@@ -80,7 +80,8 @@
         "s3:PutBucketVersioning",
         "s3:GetBucketVersioning",
         "s3:ListBucket",
-        "s3:DeleteBucket"
+        "s3:DeleteBucket",
+        "s3:GetBucketLocation"
       ],
       "Resource": [
         "arn:aws:s3:::serverless-framework-deployments-*"
