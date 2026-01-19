@@ -16,6 +16,12 @@ provider:
   logRetentionInDays: 7
   tracing:
     lambda: true
+  # Explicit deployment bucket to avoid SSM Parameter Store requirement
+  # Serverless Framework v4 tries to use SSM for bucket info, but we don't have SSM permissions
+  deploymentBucket:
+    name: flowlogic-${self:provider.stage}-serverless-deployment
+    blockPublicAccess: true
+    versioning: true
   environment:
     STAGE: ${self:provider.stage}
     NODE_ENV: ${self:custom.nodeEnv.${self:provider.stage}, self:custom.nodeEnv.prod}
