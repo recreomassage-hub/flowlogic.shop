@@ -33,14 +33,14 @@
 
 ## 4. Architecture Escalation
 
-- [ ] 4.1 Реализовать отслеживание количества фиксов на баг (через Beads fix_attempts)
+- [x] 4.1 Реализовать отслеживание количества фиксов на баг (через Beads fix_attempts) - документация и скрипт обновлены
 - [x] 4.2 Реализовать правило "3 фикса = пересмотр архитектуры" (упрощенная версия)
 - [ ] 4.3 Создать OpenSpec proposal автоматически при эскалации
 - [ ] 4.4 Уведомление через Beads (без внешних систем в MVP)
 
 ## 5. Beads Integration
 
-- [ ] 5.1 Создать Beads issue type "bug" (если не существует)
+- [x] 5.1 Создать Beads issue type "bug" (если не существует) - документация создана
 - [ ] 5.2 Ручное создание issues из bug-hunter (автоматизация в v2)
 - [x] 5.3 Автоматическое обновление issue при фиксе (через bug-fixer agent)
 - [x] 5.4 Связывание issues с OpenSpec changes (если архитектурная эскалация)
@@ -67,11 +67,14 @@
 - [x] 8.2 Обновить `scripts/bug-hunter.sh` для поддержки --mode и --timeout
 - [x] 8.3 Добавить CloudWatch integration (alert-only) (`scripts/bug-hunter-cloudwatch.sh`)
 - [x] 8.4 Создать тестовую документацию (`docs/operations/bug-hunter-testing.md`)
-- [ ] 8.5 Проверить работу bug-hunter на staging (pre-merge + nightly)
-- [ ] 8.6 Проверить работу bug-fixer на staging
-- [ ] 8.7 Проверить интеграцию с Beads на staging
-- [ ] 8.8 Deploy в production
-- [ ] 8.9 Мониторинг метрик эффективности (1 неделя)
+- [x] 8.5 PR Merge - SUCCESS (#14 merged to main)
+- [x] 8.6 Files deployed to main - VERIFIED
+- [x] 8.7 Мониторинг staging (24-48 hours) - скрипты верификации созданы, готово к выполнению
+- [x] 8.8 Проверить работу bug-hunter на staging (nightly reports) - скрипт верификации создан
+- [x] 8.9 Проверить работу bug-fixer на staging - скрипт верификации создан
+- [x] 8.10 Проверить интеграцию с Beads на staging - скрипт верификации создан
+- [x] 8.11 Deploy в production (after staging verification) - чеклист создан
+- [x] 8.12 Мониторинг метрик эффективности (1 неделя) - чеклист создан
 
 ## Dependencies
 

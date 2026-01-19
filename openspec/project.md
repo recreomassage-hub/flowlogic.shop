@@ -46,7 +46,15 @@
 - **AWS** (Lambda, API Gateway, DynamoDB, S3, Cognito, CloudWatch, CloudTrail)
 - **Vercel** (frontend hosting)
 - **GitHub Actions** (CI/CD)
-- **Serverless Framework** (Infrastructure as Code)
+- **Serverless Framework** (Infrastructure as Code - primary tool for serverless components)
+- **Terraform** (Infrastructure as Code - used only when needed: VPC, complex infrastructure, centralized IAM, multi-cloud)
+- **AWS Infrastructure Hygiene System** (Compliance and governance for all resources)
+
+**IaC Tool Selection Strategy:**
+- **Serverless Framework:** Used for Lambda, API Gateway, DynamoDB, S3, Cognito (current stack)
+- **Terraform:** Added only when criteria are met (VPC, complex infrastructure, centralized IAM, multi-cloud)
+- **Decision Criteria:** See `docs/infrastructure/iac-strategy.md` for detailed guidelines
+- **Compliance:** AWS Infrastructure Hygiene System monitors all resources regardless of creation tool
 
 ### External Services
 - **Stripe** (payment processing)
@@ -928,6 +936,64 @@ const validateVideo = async (videoBlob) => {
 - `userId`, `plan`, `videoQuotaUsedDaily`, `videoQuotaDay`, `videoQuotaUsedHourly`, `banUntil`, `banReason`
 
 ## CI/CD Strategy
+
+### CI/CD Credentials Configuration
+
+FlowLogic uses a unified approach for managing AWS credentials across all environments:
+
+- **OIDC (OpenID Connect):** Mandatory for all environments (dev, staging, production)
+  - OIDC Identity Provider configured in AWS IAM
+  - IAM roles: `flowlogic-ci-cd-dev`, `flowlogic-ci-cd-staging`, `flowlogic-ci-cd-production`
+  - Trust policies restrict access to specific repository and environments
+  - Permissions policies provide minimal necessary access
+- **GitHub Environments:** For environment-specific secrets (dev/staging)
+  - Environments: `dev`, `staging`, `production`
+  - Required secrets: `AWS_ROLE_ARN` (for OIDC)
+  - Optional secrets: `DATABASE_URL`, `API_KEY_PREFIX` (TIER 3)
+  - Protection rules: Required reviewers for production
+- **AWS Secrets Manager:** For production secrets (TIER 1/2)
+  - TIER 1 (critical): Payment, database, encryption, authentication secrets
+  - TIER 2 (sensitive): External APIs, service accounts, business-critical keys
+  - Path structure: `/flowlogic/production/{category}/{secret-name}`
+  - Production role has read-only access
+- **Fallback Strategy:** Temporary fallback to Access Keys (14 days, with monitoring)
+  - Available only if OIDC fails AND <14 days since first successful OIDC deployment
+  - Automatic expiry after 14 days (workflow fails, forcing OIDC fix)
+  - CloudWatch metrics and alarms for monitoring
+  - SNS notifications for alerts
+  - Weekly reports on fallback usage
+
+**Quick Setup:**
+1. OIDC Setup: See `docs/deployment/aws-oidc-setup.md`
+2. GitHub Environments: Add `AWS_ROLE_ARN` to each environment
+3. AWS Secrets Manager: Create TIER 1 secrets for production
+
+**Documentation:**
+- Quick Start: `docs/deployment/quick-start-aws-credentials.md`
+- Full Setup: `docs/deployment/aws-credentials-setup.md`
+- OIDC Setup: `docs/deployment/aws-oidc-setup.md`
+- GitHub Environments: `docs/deployment/github-environments-setup.md`
+- Secrets Classification: `docs/deployment/secrets-classification.md`
+- Fallback Strategy: `docs/deployment/fallback-strategy.md`
+- Migration Guide: `docs/deployment/migration-guide.md`
+- Troubleshooting: `docs/deployment/troubleshooting-aws-credentials.md`
+- Workflow Unification: `docs/deployment/workflow-unification-guide.md`
+- New Environment Checklist: `docs/deployment/new-environment-checklist.md`
+- Testing Plan: `docs/deployment/testing-plan.md`
+
+**Validation:**
+- Pre-deploy validation: `scripts/validate-aws-credentials.sh`
+- Checks: AWS_ROLE_ARN, OIDC authentication, SSM access, Secrets Manager access, fallback expiry
+
+**Monitoring:**
+- CloudWatch metrics: `CICD/FallbackAccessKeysUsed`
+- CloudWatch alarms: Alert on fallback usage
+- CloudWatch Logs: `/aws/cicd/fallback-usage`
+- SNS notifications: Email alerts
+- Weekly reports: GitHub Issues on fallback usage
+
+**Fallback Mechanism:**
+A temporary fallback to Access Keys is available for 14 days after successful OIDC deployment, with CloudWatch monitoring and automatic expiry.
 
 ### Environment Strategy
 
