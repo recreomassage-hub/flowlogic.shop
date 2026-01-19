@@ -46,11 +46,21 @@ jobs:
       
       - name: Validate infrastructure-spec.yaml
         run: |
+          echo "🔍 Debug: Validating infrastructure spec..."
+          echo "  Working directory: $(pwd)"
+          echo "  Files in root:"
+          ls -la | head -10
+          echo "  Infrastructure directory:"
+          ls -la infrastructure/ 2>/dev/null || echo "  ⚠️  infrastructure/ directory not found"
+          
           if [ ! -f "infrastructure/infrastructure-spec.yaml" ]; then
             echo "❌ ERROR: infrastructure/infrastructure-spec.yaml not found"
+            echo "  Current directory: $(pwd)"
+            echo "  Looking for: infrastructure/infrastructure-spec.yaml"
             exit 1
           fi
           
+          echo "✅ File found, validating YAML..."
           python3 -c "
           import yaml
           import sys
@@ -67,6 +77,8 @@ jobs:
               print('✅ Infrastructure spec is valid')
           except Exception as e:
               print(f'❌ Validation failed: {e}')
+              import traceback
+              traceback.print_exc()
               sys.exit(1)
           "
       
@@ -107,6 +119,20 @@ jobs:
       
       - name: Run compliance check
         run: |
+          echo "🔍 Debug: Starting compliance check..."
+          echo "  Working directory: $(pwd)"
+          echo "  Files in root:"
+          ls -la | head -10
+          echo "  Infrastructure files:"
+          ls -la infrastructure/ 2>/dev/null || echo "  ⚠️  infrastructure/ directory not found"
+          echo "  Script files:"
+          ls -la scripts/infrastructure-compliance-check.sh scripts/aws-inventory-*.{sh,py} 2>/dev/null || echo "  ⚠️  Some scripts not found"
+          echo "  AWS CLI:"
+          aws --version || echo "  ⚠️  AWS CLI not available"
+          echo "  Python:"
+          python3 --version || echo "  ⚠️  Python3 not available"
+          echo ""
+          echo "🚀 Running compliance check..."
           bash ./scripts/infrastructure-compliance-check.sh
         continue-on-error: true
         id: compliance_check
@@ -216,6 +242,14 @@ jobs:
       
       - name: Find and cleanup expired dev resources
         run: |
+          echo "🔍 Debug: Checking for expired dev resources..."
+          echo "  Working directory: $(pwd)"
+          echo "  AWS region: ${{ env.AWS_REGION }}"
+          echo "  Python version:"
+          python3 --version || echo "  ⚠️  Python3 not available"
+          echo "  Boto3 version:"
+          python3 -c "import boto3; print(f'  boto3 {boto3.__version__}')" 2>/dev/null || echo "  ⚠️  boto3 not installed"
+          echo ""
           echo "🧹 Checking for expired dev resources..."
           
           # This would be integrated with safe-aws-cleanup.py
@@ -223,40 +257,51 @@ jobs:
           python3 << 'PYEOF'
           import boto3
           import json
+          import sys
           from datetime import datetime, timezone
           
-          client = boto3.client('resourcegroupstaggingapi')
-          
-          # Find dev resources with ExpiresAt tag
-          resources = client.get_resources(
-              TagFilters=[
-                  {'Key': 'Env', 'Values': ['dev']},
-                  {'Key': 'ExpiresAt', 'Values': ['*']}
-              ]
-          )
-          
-          expired = []
-          for resource in resources.get('ResourceTagMappingList', []):
-              tags = {t['Key']: t['Value'] for t in resource.get('Tags', [])}
-              expires_str = tags.get('ExpiresAt', '')
+          try:
+              print("  Initializing boto3 client...")
+              client = boto3.client('resourcegroupstaggingapi')
+              print("  ✅ Client initialized")
               
-              if expires_str:
-                  try:
-                      expires = datetime.fromisoformat(expires_str.replace('Z', '+00:00'))
-                      if expires < datetime.now(timezone.utc):
-                          expired.append({
-                              'arn': resource['ResourceARN'],
-                              'name': resource['ResourceARN'].split(':')[-1],
-                              'expires_at': expires_str
-                          })
-                  except:
-                      pass
-          
-          if expired:
-              print(f"⚠️  Found {len(expired)} expired dev resources:")
-              for r in expired:
-                  print(f"  - {r['name']}: expired {r['expires_at']}")
-          else:
-              print("✅ No expired dev resources found")
+              print("  Querying resources...")
+              # Find dev resources with ExpiresAt tag
+              resources = client.get_resources(
+                  TagFilters=[
+                      {'Key': 'Env', 'Values': ['dev']},
+                      {'Key': 'ExpiresAt', 'Values': ['*']}
+                  ]
+              )
+              print(f"  ✅ Found {len(resources.get('ResourceTagMappingList', []))} resources")
+              
+              expired = []
+              for resource in resources.get('ResourceTagMappingList', []):
+                  tags = {t['Key']: t['Value'] for t in resource.get('Tags', [])}
+                  expires_str = tags.get('ExpiresAt', '')
+                  
+                  if expires_str:
+                      try:
+                          expires = datetime.fromisoformat(expires_str.replace('Z', '+00:00'))
+                          if expires < datetime.now(timezone.utc):
+                              expired.append({
+                                  'arn': resource['ResourceARN'],
+                                  'name': resource['ResourceARN'].split(':')[-1],
+                                  'expires_at': expires_str
+                              })
+                      except Exception as e:
+                          print(f"  ⚠️  Error parsing ExpiresAt: {e}")
+              
+              if expired:
+                  print(f"⚠️  Found {len(expired)} expired dev resources:")
+                  for r in expired:
+                      print(f"  - {r['name']}: expired {r['expires_at']}")
+              else:
+                  print("✅ No expired dev resources found")
+          except Exception as e:
+              print(f"❌ Error: {e}")
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
           PYEOF
         continue-on-error: true
