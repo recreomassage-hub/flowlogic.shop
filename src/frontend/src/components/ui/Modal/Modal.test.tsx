@@ -5,12 +5,25 @@ import { Modal } from './Modal';
 
 // Mock React Portal
 const originalCreatePortal = ReactDOM.createPortal;
+let createPortalMock: jest.Mock;
+
 beforeEach(() => {
-  (ReactDOM.createPortal as jest.Mock) = jest.fn((element: React.ReactElement) => element);
+  createPortalMock = jest.fn((element: React.ReactElement) => element);
+  // Use Object.defineProperty to mock createPortal without modifying read-only property
+  Object.defineProperty(ReactDOM, 'createPortal', {
+    value: createPortalMock,
+    writable: true,
+    configurable: true,
+  });
 });
 
 afterEach(() => {
-  ReactDOM.createPortal = originalCreatePortal;
+  // Restore original createPortal
+  Object.defineProperty(ReactDOM, 'createPortal', {
+    value: originalCreatePortal,
+    writable: true,
+    configurable: true,
+  });
   // Clean up body style after each test
   document.body.style.overflow = '';
 });

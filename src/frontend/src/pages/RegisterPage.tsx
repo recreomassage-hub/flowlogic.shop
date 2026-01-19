@@ -171,15 +171,17 @@ export function RegisterPage() {
       localStorage.setItem('debug_logs', JSON.stringify(logs.slice(-50)));
       // #endregion
       console.error('[RegisterPage] Registration error:', err);
-      console.error('[RegisterPage] Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
+      if (isApiError(err)) {
+        console.error('[RegisterPage] Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        });
+      }
       
       // For 409 Conflict (email already registered), show error but don't navigate
       // Error message is already set in authStore
-      if (err.response?.status === 409) {
+      if (isApiError(err) && err.response?.status === 409) {
         console.log('[RegisterPage] 409 Conflict - email already registered, staying on page');
         // Don't navigate - error will be shown in UI
         return;
@@ -263,7 +265,7 @@ export function RegisterPage() {
               type="text"
               label="Name (optional)"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               autoComplete="name"
               placeholder="Enter your name"
             />
@@ -306,7 +308,7 @@ export function RegisterPage() {
                   Password requirements:
                 </div>
                 <ul className="space-y-1 text-xs text-gray-600">
-                  {passwordRequirements.map((req, index) => {
+                  {passwordRequirements.map((req: string, index: number) => {
                     const isMet = !passwordErrors.some(err => 
                       err.toLowerCase().includes(req.split(' ')[0].toLowerCase())
                     );

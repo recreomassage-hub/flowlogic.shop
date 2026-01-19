@@ -52,10 +52,12 @@ export const assessmentsApi = {
       // Дополнительная диагностика
       if (error && typeof error === 'object' && 'config' in error) {
         const axiosError = error as { config?: { url?: string; baseURL?: string }; response?: { status?: number; statusText?: string; data?: unknown } };
+        const baseURL = axiosError.config?.baseURL || '';
+        const url = axiosError.config?.url || '';
         console.error('Create assessment error details:', {
-          url: axiosError.config?.url,
-          baseURL: axiosError.config?.baseURL,
-          fullURL: axiosError.config?.baseURL + axiosError.config?.url,
+          url,
+          baseURL,
+          fullURL: baseURL && url ? `${baseURL}${url}` : undefined,
           status: axiosError.response?.status,
           statusText: axiosError.response?.statusText,
           data: axiosError.response?.data,

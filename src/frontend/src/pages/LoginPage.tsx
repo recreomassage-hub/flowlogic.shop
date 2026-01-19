@@ -205,7 +205,7 @@ export function LoginPage() {
               type="password"
               label="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
               placeholder="Enter your password"

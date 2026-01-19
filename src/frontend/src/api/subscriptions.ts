@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { isApiError } from './types';
 
 export interface Subscription {
   user_id: string;
