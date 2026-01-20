@@ -93,3 +93,9 @@ aws-credentials
 aws-config
 *aws*.config
 !**/aws-config.example
+
+# Bug Fixer
+.bug-locks/
+.bug-fixer/logs/
+!.bug-fixer/config.yaml
+!.bug-fixer/README.md
